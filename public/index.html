@@ -3,59 +3,1169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tabela de Preços</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="png" href="I.R.-COMERCIO-E-MATERIAIS-ELETRICOS-PRETO.png">
+    <title>Portal</title>
+    <style>
+        /* ============================================
+           VARIÁVEIS BASE (DARK THEME - PADRÃO)
+           ============================================ */
+        :root {
+            --primary: #ff5100;
+            --primary-dark: #E67E00;
+            --primary-light: #FF6A1A;
+            --bg-primary: #000000;
+            --bg-secondary:  #0A0A0A;
+            --bg-card: #1A1A1A;
+            --text-primary: #FFFFFF;
+            --text-secondary: #A0A0A0;
+            --border-color: rgba(255, 81, 0, 0.15);
+            --input-bg: #2A2A2A;
+            --error: #EF4444;
+            --success: #22C55E;
+            --warning: #F59E0B;
+            --shadow: rgba(0, 0, 0, 0.5);
+            --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* ============================================
+           LIGHT THEME (quando navegador está em light mode)
+           ============================================ */
+        @media (prefers-color-scheme: light) {
+            :root {
+                --bg-primary: #FFFFFF;
+                --bg-secondary: #F5F5F5;
+                --bg-card: #FFFFFF;
+                --text-primary: #1E1E1E;
+                --text-secondary: #666666;
+                --border-color: #E5E5E5;
+                --input-bg: #FFFFFF;
+                --shadow: rgba(0, 0, 0, 0.08);
+                --card-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+            }
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', Roboto, Arial, sans-serif;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(circle at 20% 50%, rgba(255, 81, 0, 0.03) 0%, transparent 50%),
+                radial-gradient(circle at 80% 80%, rgba(255, 81, 0, 0.02) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ============================================
+           TELA DE LOGIN
+           ============================================ */
+        .login-screen {
+            width: 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .login-content {
+            width: 100%;
+            max-width: 500px;
+            padding: 0;
+        }
+
+        .logo-container {
+            text-align: center;
+            margin-bottom: 3rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .logo-img {
+            width: auto;
+            height: 200px;
+            max-width: 100%;
+            object-fit: contain;
+            object-position: center;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 4px 12px rgba(255, 81, 0, 0.15));
+            transition: opacity 0.3s ease;
+        }
+
+        /* Logo escura visível apenas no tema escuro */
+        .logo-dark {
+            display: block;
+        }
+
+        .logo-light {
+            display: none;
+        }
+
+        @media (prefers-color-scheme: light) {
+            .logo-dark {
+                display: none;
+            }
+            
+            .logo-light {
+                display: block;
+            }
+        }
+
+        .form-group {
+            margin-bottom: 1.8rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.6rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 18px 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            background-color: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 1.05rem;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px var(--shadow);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: var(--bg-card);
+            box-shadow: 0 4px 16px rgba(255, 81, 0, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .password-container {
+            position: relative;
+        }
+
+        .toggle-password {
+            position: absolute;
+            right: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 0;
+            margin: 0;
+        }
+
+        .toggle-password:hover {
+            color: var(--primary);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 14px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(255, 81, 0, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .btn-login:hover:not(:disabled) {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(255, 81, 0, 0.5);
+        }
+
+        .btn-login:active:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .message {
+            padding: 14px 18px;
+            border-radius: 12px;
+            margin-bottom: 1.8rem;
+            font-size: 0.95rem;
+            display: none;
+            font-weight: 500;
+            box-shadow: 0 4px 12px var(--shadow);
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.error {
+            background: rgba(239, 68, 68, 0.15);
+            border-left: 4px solid var(--error);
+            color: #DC2626;
+        }
+
+        .message.success {
+            background: rgba(34, 197, 94, 0.15);
+            border-left: 4px solid var(--success);
+            color: #15803D;
+        }
+
+        .message.warning {
+            background: rgba(245, 158, 11, 0.15);
+            border-left: 4px solid var(--warning);
+            color: #B45309;
+        }
+
+        /* ============================================
+           DASHBOARD
+           ============================================ */
+        .dashboard-screen {
+            display: none;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dashboard-header {
+            background: var(--bg-card);
+            padding: 1.5rem 2.5rem 0;
+            box-shadow: var(--card-shadow);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .company-info {
+            text-align: left;
+        }
+
+        .company-name {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .user-greeting {
+            font-size: 0.95rem;
+            color: var(--text-secondary);
+        }
+
+        .user-greeting .user-name {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .logout-btn {
+            padding: 0.9rem 1.8rem;
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--error);
+            border: 1px solid var(--error);
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: var(--error);
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        /* ============================================
+           SISTEMA DE ABAS
+           ============================================ */
+        .tabs-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            overflow-x: auto;
+            padding-bottom: 0;
+            margin-bottom: -1px;
+            min-height: 48px;
+        }
+
+        .tabs-container::-webkit-scrollbar {
+            height: 4px;
+        }
+
+        .tabs-container::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        .tabs-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .tab-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.85rem 1.5rem;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+            font-size: 0.95rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            border-radius: 0;
+            flex-shrink: 0;
+        }
+
+        .tab-item:hover {
+            background: rgba(255, 81, 0, 0.05);
+            border-bottom-color: var(--primary-light);
+            color: var(--text-primary);
+        }
+
+        .tab-item.active {
+            background: transparent;
+            border-bottom-color: var(--primary);
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .tab-close {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-size: 1.3rem;
+            line-height: 1;
+            transition: all 0.2s ease;
+        }
+
+        .tab-close:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .tab-item.active .tab-close {
+            color: var(--primary);
+        }
+
+        .tab-item.active .tab-close:hover {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--error);
+        }
+
+        .tab-item.module-selector {
+            cursor: pointer;
+        }
+
+        .tab-item.module-selector:hover {
+            background: rgba(255, 81, 0, 0.08);
+            border-bottom-color: var(--primary);
+        }
+
+        .tab-item.module-selector:not(.active) .tab-close {
+            display: none;
+        }
+
+        /* ============================================
+           CONTEÚDO PRINCIPAL
+           ============================================ */
+        .dashboard-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            height: calc(100vh - 140px);
+        }
+
+        .welcome-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 4rem 2rem;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .welcome-greeting {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+        }
+
+        .welcome-user-name {
+            color: var(--primary);
+            font-weight: 700;
+        }
+
+        .welcome-instruction {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+        }
+
+        .iframe-container {
+            display: none;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-primary);
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 2;
+        }
+
+        .iframe-container.active {
+            display: block;
+        }
+
+        .iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* ============================================
+           RESPONSIVIDADE
+           ============================================ */
+        @media (max-width: 768px) {
+            .header-top {
+                flex-direction: column;
+                gap: 1rem;
+                align-items: flex-start;
+            }
+
+            .company-name {
+                font-size: 1.1rem;
+            }
+            
+            .user-greeting {
+                font-size: 0.85rem;
+            }
+            
+            .logout-btn {
+                align-self: stretch;
+            }
+
+            .tabs-container {
+                flex-wrap: nowrap;
+                overflow-x: auto;
+            }
+
+            .tab-item {
+                font-size: 0.85rem;
+                padding: 0.6rem 1rem;
+            }
+
+            .logo-img {
+                height: 150px;
+            }
+
+            .welcome-greeting {
+                font-size: 1.5rem;
+            }
+
+            .welcome-instruction {
+                font-size: 1rem;
+            }
+            
+            .dashboard-content {
+                height: calc(100vh - 180px);
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Splash Screen -->
-    <div class="splash-screen" id="splashScreen">
-        <h1 class="splash-title">Tabela de Preços</h1>
-    </div>
-
-    <!-- Conteúdo Principal -->
-    <div class="app-content">
-        <div class="container">
-            <div class="header">
-                <div id="connectionStatus" class="connection-status offline">
-                    <span class="status-dot"></span>
+    <div class="container">
+        <!-- TELA DE LOGIN -->
+        <div id="loginScreen" class="login-screen">
+            <div class="login-content">
+                <div class="logo-container">
+                    <!-- Logo para tema escuro -->
+                    <img src="I.R.-COMERCIO-MATERIAIS-ELETRICOS-LTDA.png" 
+                         alt="Logo I.R. Comércio" 
+                         class="logo-img logo-dark" 
+                         onerror="this.style.display='none'">
+                    <!-- Logo para tema claro -->
+                    <img src="I.R.-COMERCIO-E-MATERIAIS-ELETRICOS.png" 
+                         alt="Logo I.R. Comércio" 
+                         class="logo-img logo-light" 
+                         onerror="this.style.display='none'">
                 </div>
+
+                <div id="messageBox" class="message"></div>
+
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Usuário</label>
+                        <input type="text" 
+                               id="username" 
+                               name="username" 
+                               required 
+                               autofocus 
+                               placeholder="Digite seu usuário"
+                               autocomplete="username">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <div class="password-container">
+                            <input type="password" 
+                                   id="password" 
+                                   name="password" 
+                                   required 
+                                   placeholder="Digite sua senha"
+                                   autocomplete="current-password">
+                            <button type="button" 
+                                    class="toggle-password" 
+                                    onclick="togglePassword()">MOSTRAR</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-login" id="loginBtn">
+                        Entrar
+                    </button>
+                </form>
             </div>
+        </div>
 
-            <div id="statusMessage" class="hidden"></div>
-
-            <div class="button-wrapper">
-                <button onclick="toggleForm()" class="register">Adicionar Preço</button>
-            </div>
-
-            <div class="card">
-                <div style="margin-bottom: 1.5rem;">
-                    <label style="display: block; margin-bottom: 1rem; font-weight: 600; color: var(--text-primary);">
-                        Filtrar por Marca:
-                    </label>
-                    <div id="marcasFilter" style="display: flex; gap: 0.75rem; flex-wrap: wrap;"></div>
+        <!-- DASHBOARD -->
+        <div id="dashboardScreen" class="dashboard-screen">
+            <div class="dashboard-header">
+                <div class="header-top">
+                    <div class="company-info">
+                        <div class="company-name">I.R. COMÉRCIO E MATERIAIS ELÉTRICOS LTDA</div>
+                        <div class="user-greeting">
+                            <span id="greetingText"></span>, <span class="user-name" id="userName"></span>
+                        </div>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">Sair</button>
                 </div>
                 
-                <div class="filter-section">
-                    <div class="form-group">
-                        <label for="search">Pesquisar</label>
-                        <input type="text" id="search" placeholder="Código, marca, descrição..." oninput="filterPrecos()">
-                    </div>
+                <div class="tabs-container" id="tabsContainer">
+                    <!-- Abas serão inseridas aqui -->
                 </div>
             </div>
 
-            <div class="card">
-                <div id="precosContainer"></div>
+            <div class="dashboard-content" id="dashboardContent">
+                <!-- Tela de boas-vindas -->
+                <div id="welcomeScreen" class="welcome-container">
+                    <div class="welcome-greeting">
+                        <span id="greetingTextWelcome"></span>, <span class="welcome-user-name" id="userNameWelcome"></span>
+                    </div>
+                    <div class="welcome-instruction">Selecione um módulo para começar</div>
+                </div>
+
+                <!-- Containers de iframes serão inseridos aqui -->
+                <div id="iframesContainer"></div>
             </div>
         </div>
     </div>
 
     <script>
-        // Esconder splash após 3 segundos
-        setTimeout(() => {
-            const splash = document.getElementById('splashScreen');
-            if (splash) splash.style.display = 'none';
-        }, 3000);
+        // ==========================================
+        // ======== CONFIGURAÇÃO ====================
+        // ==========================================
+        const API_URL = window.location.origin + '/api';
+
+        // ==========================================
+        // ======== PERMISSÕES POR USUÁRIO ==========
+        // ==========================================
+        const USER_PERMISSIONS = {
+            'Roberto': ['usuários', 'pregões', 'compra', 'tabela-precos', 'fornecedores', 'cotacoes-frete', 'controle-frete', 'transportadoras', 'vendas', 'faturamento', 'receber', 'pagamento', 'estoque', 'documentos'],
+            'Rosemeire': ['usuários', 'pregões', 'compra', 'tabela-precos', 'fornecedores', 'cotacoes-frete', 'controle-frete', 'transportadoras', 'vendas', 'faturamento', 'receber', 'pagamento', 'estoque', 'documentos'],
+            'vendas': ['pregões', 'compra', 'tabela-precos', 'fornecedores', 'cotacoes-frete', 'controle-frete', 'vendas', 'faturamento', 'estoque', 'documentos'],
+            'vendas2': ['usuários', 'pregões', 'compra', 'tabela-precos', 'fornecedores', 'cotacoes-frete', 'controle-frete', 'transportadoras', 'vendas', 'faturamento', 'receber', 'pagamento', 'estoque', 'documentos'],
+            'financeiro1': ['pregões', 'faturamento', 'receber', 'pagamento', 'documentos'],
+            'financeiro2': ['pregões', 'faturamento', 'receber', 'pagamento', 'documentos'],
+            'almox': ['cotacoes-frete', 'controle-frete', 'transportadoras', 'faturamento', 'estoque'],
+        };
+
+        // URLs dos módulos
+        const MODULES = [
+            {
+                id: 'usuários',
+                name: 'Gestão de Usuários',
+                description: 'Controle de acessos e permissões',
+                url: null,
+                available: false
+            },
+            {
+                id: 'vendas',
+                name: 'Painel de Vendas',
+                description: 'Faturamento e valores de comissões.',
+                url: null,
+                available: false
+            },
+            {
+                id: 'pregões',
+                name: 'Pregões',
+                description: 'Procedimentos e documentação relacionados aos processos de licitação',
+                url: null,
+                available: false
+            },
+            {
+                id: 'compra',
+                name: 'Ordens de Compra',
+                description: 'Registro e Ordens de Compra',
+                url: 'https://ir-comercio.github.io/ordem-compra/public/',
+                available: true
+            },
+            {
+                id: 'tabela-precos',
+                name: 'Tabela de Preços',
+                description: 'Consulta e atualiza preços de produtos e serviços.',
+                url: 'https://tabela-precos-udyp.onrender.com',
+                available: true
+            },
+            {
+                id: 'fornecedores',
+                name: 'Fornecedores',
+                description: 'Catálogos e Informações gerais de empresas parceiras',
+                url: null,
+                available: false
+            },
+            {
+                id: 'cotacoes-frete',
+                name: 'Cotações de Frete',
+                description: 'Gerencia cotações com histórico e comparação entre transportadoras.',
+                url: 'https://cotacoes-frete-aikc.onrender.com',
+                available: true
+            },
+            {
+                id: 'controle-frete',
+                name: 'Controle de Frete',
+                description: 'Registro e monitoramento de expedição',
+                url: 'https://controle-frete.onrender.com',
+                available: true
+            },
+            {
+                id: 'transportadoras',
+                name: 'Transportadoras',
+                description: 'Informações gerais de transportadoras parceiras',
+                url: null,
+                available: false
+            },
+            {
+                id: 'faturamento',
+                name: 'Pedidos de Faturamento',
+                description: 'Pedidos de Faturamento para o Setor Financeiro.',
+                url: null,
+                available: false
+            },
+            {
+                id: 'receber',
+                name: 'Contas a Receber',
+                description: 'Pagamentos pendentes para empresa.',
+                url: 'https://contas-receber-kkf9.onrender.com',
+                available: true
+            },
+            {
+                id: 'pagamento',
+                name: 'Contas a Pagar',
+                description: 'Compromissos financeiros da empresa.',
+                url: 'https://ir-comercio.github.io/contas-a-pagar/',
+                available: true
+            },
+            {
+                id: 'estoque',
+                name: 'Estoque',
+                description: 'Gestão e processos relacionados a entrada, saída e inventário de materiais e suprimentos.',
+                url: null,
+                available: false
+            },
+            {
+                id: 'documentos',
+                name: 'Documentos',
+                description: 'Organização e armazenamento de documentos e pastas',
+                url: null,
+                available: false
+            }
+        ];
+
+        let deviceToken = null;
+        let publicIP = null;
+        let sessionCheckInterval = null;
+        let currentSessionInfo = null;
+        let openTabs = [];
+        let activeTabId = null;
+
+        // ==========================================
+        // ======== SAUDAÇÃO BASEADA NO HORÁRIO =====
+        // ==========================================
+        function getGreeting() {
+            const brasiliaTime = new Date().toLocaleString('en-US', { 
+                timeZone: 'America/Sao_Paulo',
+                hour12: false 
+            });
+            const hour = new Date(brasiliaTime).getHours();
+            
+            if (hour >= 0 && hour < 12) {
+                return 'Bom dia';
+            } else if (hour >= 12 && hour < 18) {
+                return 'Boa tarde';
+            } else {
+                return 'Boa noite';
+            }
+        }
+
+        // ==========================================
+        // ======== GERAÇÃO DE TOKEN ================
+        // ==========================================
+        function getOrCreateDeviceToken() {
+            let token = localStorage.getItem('irDeviceToken');
+            if (!token) {
+                token = 'dev_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('irDeviceToken', token);
+            }
+            return token;
+        }
+
+        // ==========================================
+        // ======== OBTER IP PÚBLICO ================
+        // ==========================================
+        async function getPublicIP() {
+            try {
+                const response = await fetch(`${API_URL}/ip`);
+                const data = await response.json();
+                return data.ip;
+            } catch (error) {
+                console.error('Erro ao obter IP:', error);
+                return null;
+            }
+        }
+
+        // ==========================================
+        // ======== MOSTRAR MENSAGEM ================
+        // ==========================================
+        function showMessage(message, type = 'error') {
+            const messageBox = document.getElementById('messageBox');
+            messageBox.textContent = message;
+            messageBox.className = `message ${type} show`;
+            setTimeout(() => messageBox.classList.remove('show'), 5000);
+        }
+
+        // ==========================================
+        // ======== LOGIN ===========================
+        // ==========================================
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value.toLowerCase().trim();
+            const password = document.getElementById('password').value;
+            const loginBtn = document.getElementById('loginBtn');
+            
+            loginBtn.disabled = true;
+            loginBtn.textContent = 'Autenticando...';
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username,
+                        password,
+                        deviceToken
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    showMessage(data.message || data.error || 'Erro ao fazer login', 'error');
+                    return;
+                }
+
+                if (data.success && data.session) {
+                    sessionStorage.setItem('irUserSession', JSON.stringify(data.session));
+                    currentSessionInfo = data.session;
+                    showDashboard(data.session);
+                    startSessionCheck();
+                    showMessage('Login realizado com sucesso!', 'success');
+                }
+                
+            } catch (error) {
+                console.error('Erro no login:', error);
+                showMessage('Erro ao realizar login. Tente novamente.', 'error');
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Entrar';
+            }
+        });
+
+        // ==========================================
+        // ======== VERIFICAÇÃO PERIÓDICA DE SESSÃO =
+        // ==========================================
+        function startSessionCheck() {
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+            }
+
+            sessionCheckInterval = setInterval(async () => {
+                const sessionInfo = sessionStorage.getItem('irUserSession');
+                if (!sessionInfo) {
+                    stopSessionCheck();
+                    return;
+                }
+
+                const session = JSON.parse(sessionInfo);
+                const isValid = await verifySession(session.sessionToken);
+
+                if (!isValid) {
+                    stopSessionCheck();
+                    forceLogout('Sua sessão expirou ou foi invalidada');
+                }
+            }, 30000);
+        }
+
+        function stopSessionCheck() {
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+                sessionCheckInterval = null;
+            }
+        }
+
+        async function verifySession(sessionToken) {
+            try {
+                const response = await fetch(`${API_URL}/verify-session`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionToken })
+                });
+
+                const data = await response.json();
+                return data.valid === true;
+            } catch (error) {
+                console.error('Erro ao verificar sessão:', error);
+                return false;
+            }
+        }
+
+        // ==========================================
+        // ======== MOSTRAR DASHBOARD ===============
+        // ==========================================
+        function showDashboard(sessionInfo) {
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('dashboardScreen').style.display = 'flex';
+            
+            const greeting = getGreeting();
+            
+            // Preenche informações no cabeçalho
+            document.getElementById('greetingText').textContent = greeting;
+            document.getElementById('userName').textContent = sessionInfo.name;
+            
+            // Preenche informações na tela de boas-vindas
+            document.getElementById('greetingTextWelcome').textContent = greeting;
+            document.getElementById('userNameWelcome').textContent = sessionInfo.name;
+            
+            // Adicionar módulos como abas clicáveis no cabeçalho
+            const tabsContainer = document.getElementById('tabsContainer');
+            const userPermissions = USER_PERMISSIONS[sessionInfo.username] || [];
+            
+            MODULES.forEach(module => {
+                if (!userPermissions.includes(module.id)) return;
+                if (module.adminOnly && !sessionInfo.isAdmin) return;
+                if (!module.available || !module.url) return; // Só mostrar módulos disponíveis
+                
+                const moduleTab = document.createElement('div');
+                moduleTab.className = 'tab-item module-selector';
+                moduleTab.id = `module-selector-${module.id}`;
+                moduleTab.innerHTML = `<span class="tab-name">${module.name}</span>`;
+                
+                moduleTab.onclick = () => openModuleTab(module);
+                
+                tabsContainer.appendChild(moduleTab);
+            });
+        }
+
+        // ==========================================
+        // ======== GERENCIAMENTO DE ABAS ===========
+        // ==========================================
+        function openModuleTab(module) {
+            // Verifica se a aba já está aberta
+            const existingTab = openTabs.find(tab => tab.id === module.id);
+            if (existingTab) {
+                switchToTab(module.id);
+                return;
+            }
+
+            // Cria nova aba
+            const tab = {
+                id: module.id,
+                name: module.name,
+                url: module.url
+            };
+
+            openTabs.push(tab);
+            
+            // Atualiza o seletor de módulo para mostrar que está ativo
+            const moduleSelector = document.getElementById(`module-selector-${module.id}`);
+            if (moduleSelector) {
+                moduleSelector.classList.add('active');
+                
+                // Adiciona botão de fechar
+                const closeBtn = document.createElement('button');
+                closeBtn.className = 'tab-close';
+                closeBtn.innerHTML = '×';
+                closeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    closeTab(module.id);
+                };
+                moduleSelector.appendChild(closeBtn);
+            }
+            
+            createIframeContainer(tab);
+            switchToTab(module.id);
+        }
+
+        function createIframeContainer(tab) {
+            const iframesContainer = document.getElementById('iframesContainer');
+            
+            const params = new URLSearchParams({
+                sessionToken: currentSessionInfo.sessionToken,
+                deviceToken: currentSessionInfo.deviceToken,
+                username: currentSessionInfo.username,
+                userId: currentSessionInfo.userId,
+                ip: currentSessionInfo.ip
+            });
+            
+            const container = document.createElement('div');
+            container.className = 'iframe-container';
+            container.id = `iframe-${tab.id}`;
+            container.innerHTML = `
+                <iframe src="${tab.url}?${params.toString()}" title="${tab.name}"></iframe>
+            `;
+            
+            iframesContainer.appendChild(container);
+        }
+
+        function switchToTab(tabId) {
+            // Remove active de todas as abas
+            document.querySelectorAll('.tab-item.module-selector').forEach(tab => {
+                const id = tab.id.replace('module-selector-', '');
+                if (id !== tabId && openTabs.find(t => t.id === id)) {
+                    tab.classList.remove('active');
+                } else if (id === tabId) {
+                    tab.classList.add('active');
+                }
+            });
+
+            // Remove active de todos os iframes
+            document.querySelectorAll('.iframe-container').forEach(container => {
+                container.classList.remove('active');
+            });
+
+            // Adiciona active no iframe selecionado
+            const activeIframe = document.getElementById(`iframe-${tabId}`);
+            if (activeIframe) activeIframe.classList.add('active');
+
+            // Esconde a tela de boas-vindas quando um módulo estiver ativo
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            welcomeScreen.style.display = 'none';
+            welcomeScreen.style.zIndex = '1';
+
+            activeTabId = tabId;
+        }
+
+        function closeTab(tabId, event) {
+            if (event) {
+                event.stopPropagation();
+            }
+
+            // Remove a aba do array
+            openTabs = openTabs.filter(tab => tab.id !== tabId);
+
+            // Remove iframe do DOM
+            const iframeContainer = document.getElementById(`iframe-${tabId}`);
+            if (iframeContainer) iframeContainer.remove();
+            
+            // Atualiza o seletor de módulo
+            const moduleSelector = document.getElementById(`module-selector-${tabId}`);
+            if (moduleSelector) {
+                moduleSelector.classList.remove('active');
+                
+                // Remove o botão de fechar
+                const closeBtn = moduleSelector.querySelector('.tab-close');
+                if (closeBtn) closeBtn.remove();
+            }
+
+            // Se era a aba ativa, muda para outra ou mostra welcome
+            if (activeTabId === tabId) {
+                if (openTabs.length > 0) {
+                    switchToTab(openTabs[openTabs.length - 1].id);
+                } else {
+                    const welcomeScreen = document.getElementById('welcomeScreen');
+                    welcomeScreen.style.display = 'flex';
+                    welcomeScreen.style.zIndex = '10';
+                    activeTabId = null;
+                }
+            }
+        }
+
+        // ==========================================
+        // ======== LOGOUT ==========================
+        // ==========================================
+        async function logout() {
+            if (!confirm('Deseja realmente sair?')) return;
+            
+            try {
+                const sessionInfo = JSON.parse(sessionStorage.getItem('irUserSession'));
+                if (sessionInfo) {
+                    await fetch(`${API_URL}/logout`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            sessionToken: sessionInfo.sessionToken,
+                            deviceToken: sessionInfo.deviceToken
+                        })
+                    });
+                }
+            } catch (error) {
+                console.error('Erro no logout:', error);
+            }
+            
+            performLogout();
+        }
+
+        function forceLogout(message) {
+            showMessage(message || 'Sessão encerrada', 'warning');
+            performLogout();
+        }
+
+        function performLogout() {
+            stopSessionCheck();
+            sessionStorage.removeItem('irUserSession');
+            
+            // Limpa todas as abas
+            openTabs = [];
+            activeTabId = null;
+            document.getElementById('tabsContainer').innerHTML = '';
+            document.getElementById('iframesContainer').innerHTML = '';
+            
+            document.getElementById('dashboardScreen').style.display = 'none';
+            document.getElementById('loginScreen').classList.remove('hidden');
+            document.getElementById('password').value = '';
+            
+            const welcomeScreen = document.getElementById('welcomeScreen');
+            welcomeScreen.style.display = 'flex';
+            welcomeScreen.style.zIndex = '10';
+        }
+
+        // ==========================================
+        // ======== TOGGLE PASSWORD =================
+        // ==========================================
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const btn = document.querySelector('.toggle-password');
+            if (input.type === 'password') {
+                input.type = 'text';
+                btn.textContent = 'OCULTAR';
+            } else {
+                input.type = 'password';
+                btn.textContent = 'MOSTRAR';
+            }
+        }
+
+        // ==========================================
+        // ======== INICIALIZAÇÃO ===================
+        // ==========================================
+        async function init() {
+            try {
+                deviceToken = getOrCreateDeviceToken();
+                publicIP = await getPublicIP();
+                
+                const sessionInfo = sessionStorage.getItem('irUserSession');
+                if (sessionInfo) {
+                    const session = JSON.parse(sessionInfo);
+                    const isValid = await verifySession(session.sessionToken);
+                    
+                    if (isValid) {
+                        currentSessionInfo = session;
+                        showDashboard(session);
+                        startSessionCheck();
+                    } else {
+                        sessionStorage.removeItem('irUserSession');
+                    }
+                }
+            } catch (error) {
+                console.error('Erro na inicialização:', error);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+
+        document.addEventListener('visibilitychange', async () => {
+            if (!document.hidden) {
+                const sessionInfo = sessionStorage.getItem('irUserSession');
+                if (sessionInfo) {
+                    const session = JSON.parse(sessionInfo);
+                    const isValid = await verifySession(session.sessionToken);
+                    
+                    if (!isValid) {
+                        forceLogout('Sua sessão expirou');
+                    }
+                }
+            }
+        });
     </script>
-    <script src="script.js"></script>
 </body>
 </html>
