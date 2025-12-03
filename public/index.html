@@ -24,9 +24,10 @@
 
             <div id="statusMessage" class="hidden"></div>
 
-            <div class="button-wrapper">
+            <!-- REMOVIDO: Botão fixo no topo -->
+            <!-- <div class="button-wrapper">
                 <button onclick="toggleForm()" class="register">Adicionar Preço</button>
-            </div>
+            </div> -->
 
             <div class="card">
                 <div style="margin-bottom: 1.5rem;">
@@ -35,7 +36,6 @@
                     </label>
                     <div id="marcasFilter" style="display: flex; gap: 0.75rem; flex-wrap: wrap;"></div>
                 </div>
-
                 <div class="filter-section">
                     <div class="form-group">
                         <label for="search">Pesquisar</label>
@@ -49,6 +49,14 @@
             </div>
         </div>
     </div>
+
+    <!-- NOVO: Botão Flutuante (igual ao Contas a Pagar) -->
+    <button onclick="toggleForm()" class="floating-add-btn" title="Adicionar Preço">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+    </button>
 
     <script>
         // Esconder splash após 3 segundos
