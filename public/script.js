@@ -11,7 +11,9 @@ let marcasDisponiveis = new Set();
 let lastDataHash = '';
 let sessionToken = null;
 
-// LOG APENAS NO INÍCIO
+// OTIMIZAÇÃO: Debounce para evitar múltiplas renderizações
+let renderTimeout = null;
+
 console.log('🚀 Tabela de Preços iniciada');
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -49,9 +51,6 @@ function showConfirm(message, options = {}) {
 
         confirmBtn.addEventListener('click', () => closeModal(true));
         cancelBtn.addEventListener('click', () => closeModal(false));
-        
-        // REMOVIDO: Não fecha mais ao clicar fora do modal de confirmação
-        // modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(false); });
 
         if (!document.querySelector('#modalAnimations')) {
             const style = document.createElement('style');
@@ -150,21 +149,21 @@ function showFormModal(editingId = null) {
             showMessage('Criado!', 'success');
         }
 
-        atualizarMarcasDisponiveis();
-        renderMarcasFilter();
-        filterPrecos();
+        // OTIMIZAÇÃO: Atualiza marcas e filtra em batch
+        requestAnimationFrame(() => {
+            atualizarMarcasDisponiveis();
+            renderMarcasFilter();
+            filterPrecos();
+        });
+        
         closeModal();
         syncWithServer(formData, editId, tempId);
     });
 
-    // Botão Cancelar - mostra mensagem e fecha
     cancelBtn.addEventListener('click', () => {
         showMessage(isEditing ? 'Atualização cancelada' : 'Registro cancelado', 'error');
         closeModal();
     });
-    
-    // REMOVIDO: Não fecha mais ao clicar fora do modal
-    // modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
     
     setTimeout(() => document.getElementById('modalMarca').focus(), 100);
 }
@@ -202,15 +201,12 @@ function mostrarTelaAcessoNegado(mensagem = 'NÃO AUTORIZADO') {
             text-align: center;
             padding: 2rem;
         ">
-            
             <h1 style="font-size: 2.2rem; margin-bottom: 1rem;">
                 ${mensagem}
             </h1>
-
             <p style="color: var(--text-secondary); margin-bottom: 2rem;">
                 Somente usuários autenticados podem acessar esta área.
             </p>
-
             <a href="${PORTAL_URL}" style="
                 display: inline-block;
                 background: var(--btn-register);
@@ -224,11 +220,9 @@ function mostrarTelaAcessoNegado(mensagem = 'NÃO AUTORIZADO') {
     `;
 }
 
-
-
 function inicializarApp() {
     checkServerStatus();
-    setInterval(checkServerStatus, 15000); // A cada 15 segundos
+    setInterval(checkServerStatus, 15000);
     startPolling();
 }
 
@@ -258,7 +252,6 @@ async function checkServerStatus() {
         const wasOffline = !isOnline;
         isOnline = response.ok;
         
-        // LOG APENAS QUANDO MUDA DE STATUS
         if (wasOffline && isOnline) {
             console.log('✅ Servidor ONLINE');
             await loadPrecos();
@@ -308,15 +301,17 @@ async function loadPrecos() {
             precos = data.map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
             lastDataHash = newHash;
             
-            // LOG APENAS NA PRIMEIRA VEZ OU QUANDO MUDAR
             console.log(`📊 ${data.length} preços carregados`);
             
-            atualizarMarcasDisponiveis();
-            renderMarcasFilter();
-            filterPrecos();
+            // OTIMIZAÇÃO: Atualiza em batch usando requestAnimationFrame
+            requestAnimationFrame(() => {
+                atualizarMarcasDisponiveis();
+                renderMarcasFilter();
+                filterPrecos();
+            });
         }
     } catch (error) {
-        // Silencioso - não loga
+        // Silencioso
     }
 }
 
@@ -324,7 +319,7 @@ function startPolling() {
     loadPrecos();
     setInterval(() => {
         if (isOnline) loadPrecos();
-    }, 10000); // A cada 10 segundos
+    }, 10000);
 }
 
 function atualizarMarcasDisponiveis() {
@@ -339,12 +334,20 @@ function renderMarcasFilter() {
     if (!container) return;
 
     const marcasArray = Array.from(marcasDisponiveis).sort();
-    const buttons = ['TODAS', ...marcasArray].map(marca => {
-        const isActive = marca === marcaSelecionada ? 'active' : '';
-        return `<button class="brand-button ${isActive}" onclick="window.selecionarMarca('${marca}')">${marca}</button>`;
-    }).join('');
+    
+    // OTIMIZAÇÃO: Usa fragment para melhor performance
+    const fragment = document.createDocumentFragment();
+    
+    ['TODAS', ...marcasArray].forEach(marca => {
+        const button = document.createElement('button');
+        button.className = `brand-button ${marca === marcaSelecionada ? 'active' : ''}`;
+        button.textContent = marca;
+        button.onclick = () => window.selecionarMarca(marca);
+        fragment.appendChild(button);
+    });
 
-    container.innerHTML = buttons;
+    container.innerHTML = '';
+    container.appendChild(fragment);
 }
 
 window.selecionarMarca = function(marca) {
@@ -386,9 +389,13 @@ async function syncWithServer(formData, editId = null, tempId = null) {
         }
 
         lastDataHash = JSON.stringify(precos.map(p => p.id));
-        atualizarMarcasDisponiveis();
-        renderMarcasFilter();
-        filterPrecos();
+        
+        // OTIMIZAÇÃO: Atualiza em batch
+        requestAnimationFrame(() => {
+            atualizarMarcasDisponiveis();
+            renderMarcasFilter();
+            filterPrecos();
+        });
     } catch (error) {
         if (!editId) {
             precos = precos.filter(p => p.id !== tempId);
@@ -414,9 +421,14 @@ window.deletePreco = async function(id) {
 
     const deletedPreco = precos.find(p => p.id === id);
     precos = precos.filter(p => p.id !== id);
-    atualizarMarcasDisponiveis();
-    renderMarcasFilter();
-    filterPrecos();
+    
+    // OTIMIZAÇÃO: Atualiza em batch
+    requestAnimationFrame(() => {
+        atualizarMarcasDisponiveis();
+        renderMarcasFilter();
+        filterPrecos();
+    });
+    
     showMessage('Excluído!', 'error');
 
     if (isOnline) {
@@ -436,38 +448,50 @@ window.deletePreco = async function(id) {
         } catch (error) {
             if (deletedPreco) {
                 precos.push(deletedPreco);
-                atualizarMarcasDisponiveis();
-                renderMarcasFilter();
-                filterPrecos();
+                requestAnimationFrame(() => {
+                    atualizarMarcasDisponiveis();
+                    renderMarcasFilter();
+                    filterPrecos();
+                });
                 showMessage('Erro ao excluir', 'error');
             }
         }
     }
 };
 
+// OTIMIZAÇÃO: Debounce para filtro de pesquisa
+let filterDebounce = null;
 function filterPrecos() {
-    const searchTerm = document.getElementById('search').value.toLowerCase();
-    let filtered = precos;
-
-    if (marcaSelecionada !== 'TODAS') {
-        filtered = filtered.filter(p => p.marca === marcaSelecionada);
+    // Cancela o timeout anterior
+    if (filterDebounce) {
+        cancelAnimationFrame(filterDebounce);
     }
+    
+    // Agenda nova renderização
+    filterDebounce = requestAnimationFrame(() => {
+        const searchTerm = document.getElementById('search').value.toLowerCase();
+        let filtered = precos;
 
-    if (searchTerm) {
-        filtered = filtered.filter(p => 
-            p.codigo.toLowerCase().includes(searchTerm) ||
-            p.marca.toLowerCase().includes(searchTerm) ||
-            p.descricao.toLowerCase().includes(searchTerm)
-        );
-    }
+        if (marcaSelecionada !== 'TODAS') {
+            filtered = filtered.filter(p => p.marca === marcaSelecionada);
+        }
 
-    filtered.sort((a, b) => {
-        const marcaCompare = a.marca.localeCompare(b.marca);
-        if (marcaCompare !== 0) return marcaCompare;
-        return a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
+        if (searchTerm) {
+            filtered = filtered.filter(p => 
+                p.codigo.toLowerCase().includes(searchTerm) ||
+                p.marca.toLowerCase().includes(searchTerm) ||
+                p.descricao.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        filtered.sort((a, b) => {
+            const marcaCompare = a.marca.localeCompare(b.marca);
+            if (marcaCompare !== 0) return marcaCompare;
+            return a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
+        });
+
+        renderPrecos(filtered);
     });
-
-    renderPrecos(filtered);
 }
 
 function getTimeAgo(timestamp) {
@@ -493,7 +517,22 @@ function renderPrecos(precosToRender) {
         return;
     }
 
-    const table = `
+    // OTIMIZAÇÃO: Usa innerHTML em uma única operação
+    const rows = precosToRender.map(p => `
+        <tr>
+            <td><strong>${p.marca}</strong></td>
+            <td>${p.codigo}</td>
+            <td>R$ ${parseFloat(p.preco).toFixed(2)}</td>
+            <td>${p.descricao}</td>
+            <td style="color: var(--text-secondary); font-size: 0.85rem;">${getTimeAgo(p.timestamp)}</td>
+            <td class="actions-cell" style="text-align: center;">
+                <button onclick="window.editPreco('${p.id}')" class="action-btn edit">Editar</button>
+                <button onclick="window.deletePreco('${p.id}')" class="action-btn delete">Excluir</button>
+            </td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
         <div style="overflow-x: auto;">
             <table>
                 <thead>
@@ -506,42 +545,22 @@ function renderPrecos(precosToRender) {
                         <th style="text-align: center;">Ações</th>
                     </tr>
                 </thead>
-                <tbody>
-                    ${precosToRender.map(p => `
-                        <tr>
-                            <td><strong>${p.marca}</strong></td>
-                            <td>${p.codigo}</td>
-                            <td>R$ ${parseFloat(p.preco).toFixed(2)}</td>
-                            <td>${p.descricao}</td>
-                            <td style="color: var(--text-secondary); font-size: 0.85rem;">${getTimeAgo(p.timestamp)}</td>
-                            <td class="actions-cell" style="text-align: center;">
-                                <button onclick="window.editPreco('${p.id}')" class="action-btn edit">Editar</button>
-                                <button onclick="window.deletePreco('${p.id}')" class="action-btn delete">Excluir</button>
-                            </td>
-                        </tr>
-                    `).join('')}
-                </tbody>
+                <tbody>${rows}</tbody>
             </table>
         </div>
     `;
-    
-    container.innerHTML = table;
 }
 
 function showMessage(message, type) {
-    // Remove mensagens antigas
     const oldMessages = document.querySelectorAll('.floating-message');
     oldMessages.forEach(msg => msg.remove());
     
-    // Cria nova mensagem flutuante (mesma aparência do status-message)
     const messageDiv = document.createElement('div');
     messageDiv.className = `floating-message ${type}`;
     messageDiv.textContent = message;
     
-    // Adiciona no body para aparecer acima do modal
     document.body.appendChild(messageDiv);
     
-    // Remove após 3 segundos
     setTimeout(() => {
         messageDiv.style.animation = 'slideOut 0.3s ease forwards';
         setTimeout(() => messageDiv.remove(), 300);
