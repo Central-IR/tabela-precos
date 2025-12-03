@@ -111,9 +111,9 @@ body {
 }
 
 .container {
-    max-width: 1600px;
+    max-width: 1800px;
     margin: 2rem auto;
-    padding: 0 1.5rem 5rem 1.5rem; /* Espaço extra no bottom para o botão flutuante */
+    padding: 0 2rem 5rem 2rem; /* Espaço extra no bottom para o botão flutuante */
 }
 
 .card {
