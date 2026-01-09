@@ -1,7 +1,7 @@
-/* VARIÁVEIS BASE - IDÊNTICAS A TRANSPORTADORAS */
+/* VARIÁVEIS BASE */
 :root {
     --primary: #CC7000;
-    --bg-primary: #FFFFFF;
+    --bg-primary: #FFFFFF;   /* ✅ branco */
     --bg-secondary: #F8F9FA;
     --bg-card: #FFFFFF;
     --text-primary: #1A1A1A;
@@ -28,7 +28,7 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg-primary: #000000;
+        --bg-primary: #000000; /* ✅ escuro */
         --bg-secondary: #000000c7;
         --bg-card: #1A1A1A;
         --text-primary: #FFFFFF;
@@ -75,6 +75,7 @@ body {
         transform: rotate(360deg);
     }
 }
+
 
 /* ============================================
    SPLASH SCREEN
@@ -216,7 +217,7 @@ h3 {
     70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
 }
 
-/* BOTÃO NO HEADER */
+/* NEW ORDER BUTTON IN HEADER */
 .btn-new-order-header {
     background: var(--btn-register);
     color: white;
@@ -241,12 +242,14 @@ h3 {
     box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
 }
 
-/* FILTRO DE MARCAS */
+/* ============================================
+   FILTRO DE TRANSPORTADORAS
+   ============================================ */
 .filter-section {
     margin-bottom: 1rem;
 }
 
-#marcasFilter {
+#transportadorasFilter {
     display: flex;
     flex-wrap: wrap;
     gap: 0.5rem;
@@ -271,12 +274,14 @@ h3 {
 }
 
 .brand-button.active {
-    background: #6B7280;
+    background: #6B7280;  /* Cinza médio */
     color: white;
-    border-color: #4B5563;
+    border-color: #4B5563;  /* Cinza escuro */
 }
 
-/* SEARCH BAR */
+/* ============================================
+   SEARCH BAR WITH INTEGRATED FILTERS
+   ============================================ */
 .search-bar-wrapper {
     margin-bottom: 0.5rem;
 }
@@ -316,7 +321,9 @@ h3 {
     color: var(--text-secondary);
 }
 
-/* TABLE */
+/* ============================================
+   TABLE
+   ============================================ */
 table {
     width: 100%;
     border-collapse: separate;
@@ -360,10 +367,12 @@ tbody tr:hover {
 
 .actions-cell {
     white-space: nowrap;
-    min-width: 200px;
+    min-width: 300px;
 }
 
-/* FORM & BUTTONS */
+/* ============================================
+   FORM & BUTTONS
+   ============================================ */
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -433,15 +442,15 @@ button:disabled {
     opacity: 0.5;
 }
 
-button.register {
+button.register, button[onclick*="openFormModal"] {
     background: var(--btn-register);
 }
 
-button.danger, button.delete, .action-btn.delete {
+button.danger, button.delete, button[onclick*="deleteTransportadora"], .action-btn.delete {
     background: var(--btn-delete);
 }
 
-button.edit, .action-btn.edit {
+button.edit, button[onclick*="editTransportadora"], .action-btn.edit {
     background: var(--btn-edit);
 }
 
@@ -449,12 +458,16 @@ button.view, .action-btn.view {
     background: var(--btn-view);
 }
 
-button.success, button.save, button[type="submit"] {
+button.success, button.save, button[type="submit"], .action-btn.success {
     background: var(--btn-save);
 }
 
 button.secondary {
     background: #6B7280;
+}
+
+button[onclick*="closeFormModal"], button[onclick*="closeViewModal"] {
+    background: var(--btn-delete);
 }
 
 button.small {
@@ -469,7 +482,81 @@ button.small {
     min-width: 70px;
 }
 
-/* FLOATING MESSAGES */
+/* CAMPOS DINÂMICOS */
+.dynamic-field {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.dynamic-field input {
+    flex: 1;
+}
+
+.dynamic-field button {
+    padding: 8px 12px;
+    margin: 0;
+}
+
+.add-field-btn {
+    background: var(--btn-register);
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    margin-top: 0.5rem;
+}
+
+/* SELEÇÃO DE REGIÕES E ESTADOS */
+.selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+}
+
+.selection-item {
+    padding: 12px 16px;
+    background: var(--input-bg);
+    border-radius: 8px;
+    border: 2px solid var(--border-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    user-select: none;
+}
+
+.selection-item:hover {
+    border-color: var(--primary);
+    background: rgba(204, 112, 0, 0.1);
+}
+
+.selection-item.selected {
+    background: #6B7280;  /* Cinza médio */
+    border-color: #4B5563;  /* Cinza escuro */
+    color: white;
+}
+
+/* MODO VISUALIZAÇÃO */
+.selection-grid.view-mode {
+    pointer-events: none;
+}
+
+.selection-item-view {
+    padding: 12px 16px;
+    background: #6B7280;  /* Cinza médio */
+    border-radius: 8px;
+    border: 2px solid #4B5563;  /* Cinza escuro */
+    text-align: center;
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: white;
+}
+
+/* ============================================
+   FLOATING MESSAGES
+   ============================================ */
 .floating-message {
     position: fixed;
     bottom: 24px;
@@ -508,14 +595,16 @@ button.small {
     }
 }
 
-@keyframes slideOut {
+@keyframes slideOutBottom {
     to {
         opacity: 0;
         transform: translateY(100px);
     }
 }
 
-/* MODAL */
+/* ============================================
+   MODAL
+   ============================================ */
 .modal-overlay {
     display: none;
     position: fixed;
@@ -542,12 +631,6 @@ button.small {
     }
 }
 
-@keyframes fadeOut {
-    to {
-        opacity: 0;
-    }
-}
-
 .modal-content {
     background: var(--bg-card);
     border-radius: 16px;
@@ -562,8 +645,8 @@ button.small {
     animation: scaleIn 0.2s ease forwards;
 }
 
-.modal-content.large {
-    max-width: 1000px;
+.modal-content.extra-large {
+    max-width: 1400px;
 }
 
 @keyframes scaleIn {
@@ -588,11 +671,82 @@ button.small {
     margin: 0;
 }
 
-.modal-message {
-    margin: 1.5rem 0;
+.close-modal {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0;
+    margin: 0;
+    width: 32px;
+    height: 32px;
+}
+
+.close-modal:hover {
     color: var(--text-primary);
-    font-size: 1rem;
-    line-height: 1.6;
+}
+
+/* SISTEMA DE ABAS */
+.tabs-container {
+    margin-bottom: 1.5rem;
+}
+
+.tabs-nav {
+    display: flex;
+    gap: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+    margin-bottom: 1.5rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    flex-wrap: wrap;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    padding: 12px 20px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+    margin: 0;
+    border-radius: 0;
+    pointer-events: auto;
+}
+
+.tab-btn:hover {
+    color: var(--text-primary);
+    background: rgba(204, 112, 0, 0.05);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    background: transparent;
+}
+
+.tab-content {
+    display: none;
+    animation: fadeInTab 0.3s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+@keyframes fadeInTab {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .modal-actions {
@@ -609,15 +763,36 @@ button.small {
     min-width: 120px;
 }
 
-.modal-form-content {
-    margin-top: 1rem;
+/* VIEW SECTION */
+.view-section {
+    margin-bottom: 1.5rem;
+}
+
+.view-section h4 {
+    color: var(--primary);
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.view-section p {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.view-section .empty {
+    color: var(--text-secondary);
+    font-style: italic;
 }
 
 .hidden {
     display: none !important;
 }
 
-/* RESPONSIVE */
+/* ============================================
+   RESPONSIVE
+   ============================================ */
 @media (max-width: 768px) {
     .container {
         padding: 0 1rem 5rem 1rem;
@@ -641,6 +816,10 @@ button.small {
     
     h1 {
         font-size: 1.5rem;
+    }
+    
+    .splash-title {
+        font-size: 1.3rem;
     }
     
     .search-bar {
@@ -684,11 +863,24 @@ button.small {
         width: 100%;
     }
     
+    .tabs-nav {
+        flex-wrap: nowrap;
+    }
+    
+    .tab-btn {
+        font-size: 0.8rem;
+        padding: 10px 15px;
+    }
+    
     .actions-cell {
         min-width: auto;
     }
     
-    #marcasFilter {
+    .selection-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    #transportadorasFilter {
         gap: 0.4rem;
     }
     
