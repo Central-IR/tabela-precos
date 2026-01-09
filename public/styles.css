@@ -1,7 +1,7 @@
-/* VARIÁVEIS BASE - IDÊNTICAS A TRANSPORTADORAS */
+/* VARIÁVEIS BASE */
 :root {
     --primary: #CC7000;
-    --bg-primary: #FFFFFF;
+    --bg-primary: #FFFFFF;   /* ✅ branco */
     --bg-secondary: #F8F9FA;
     --bg-card: #FFFFFF;
     --text-primary: #1A1A1A;
@@ -28,7 +28,7 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg-primary: #000000;
+        --bg-primary: #000000; /* ✅ escuro */
         --bg-secondary: #000000c7;
         --bg-card: #1A1A1A;
         --text-primary: #FFFFFF;
@@ -43,6 +43,20 @@
         --shadow: rgba(0, 0, 0, 0.3);
         --table-hover: rgba(128, 128, 128, 0.15);
     }
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    overflow-y: scroll;
 }
 
 /* LOADER */
@@ -62,23 +76,52 @@
     }
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+
+/* ============================================
+   SPLASH SCREEN
+   ============================================ */
+.splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: fadeOut 1.0s ease 2.5s forwards;
 }
 
-body {
-    font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
-    background: var(--bg-secondary);
+.splash-title {
+    font-size: 2rem;
+    font-weight: 700;
     color: var(--text-primary);
-    line-height: 1.6;
-    overflow-y: scroll;
+    letter-spacing: -0.5px;
+    opacity: 0;
+    animation: fadeOut 0.5s ease 0.5s forwards;
+}
+
+@keyframes smoothFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
 }
 
 .app-content {
-    opacity: 1;
+    opacity: 0;
+    animation: contentFadeIn 0.5s ease 0.5s forwards;
 }
+
+@keyframes contentFadeIn {
+    to { opacity: 1; }
+}
+
 
 .container {
     max-width: 1800px;
