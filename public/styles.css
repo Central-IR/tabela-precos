@@ -59,9 +59,51 @@ body {
     overflow-y: scroll;
 }
 
-.app-content {
-    opacity: 1;
+/* ============================================
+   SPLASH SCREEN
+   ============================================ */
+.splash-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--bg-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 99999;
+    animation: fadeOut 1.0s ease 2.5s forwards;
 }
+
+.splash-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    opacity: 0;
+    animation: fadeOut 0.5s ease 1.0s forwards;
+}
+
+@keyframes smoothFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
+}
+
+.app-content {
+    opacity: 0;
+    animation: contentFadeIn 0.5s ease 1.0s forwards;
+}
+
+@keyframes contentFadeIn {
+    to { opacity: 1; }
+}
+
 
 .container {
     max-width: 1800px;
