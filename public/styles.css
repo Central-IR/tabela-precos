@@ -91,7 +91,7 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 99999;
-    animation: fadeOut 1.0s ease 2.5s forwards;
+    animation: splashFadeOut 1.0s ease 2.5s forwards;
 }
 
 .splash-title {
@@ -100,7 +100,7 @@ body {
     color: var(--text-primary);
     letter-spacing: -0.5px;
     opacity: 0;
-    animation: fadeOut 0.5s ease 1.0s forwards;
+    animation: smoothFadeIn 0.5s ease 1.0s forwards;
 }
 
 @keyframes smoothFadeIn {
@@ -108,19 +108,18 @@ body {
     to { opacity: 1; }
 }
 
-@keyframes fadeOut {
+@keyframes splashFadeOut {
     to { opacity: 0; visibility: hidden; }
 }
 
 .app-content {
     opacity: 0;
-    animation: contentFadeIn 0.5s ease 1.0s forwards;
+    animation: contentFadeIn 0.5s ease 3.0s forwards;
 }
 
 @keyframes contentFadeIn {
     to { opacity: 1; }
 }
-
 
 .container {
     max-width: 1800px;
@@ -530,20 +529,20 @@ button.small {
     justify-content: center;
     z-index: 10000;
     opacity: 0;
-    animation: fadeIn 0.2s ease forwards;
+    animation: modalFadeIn 0.2s ease forwards;
 }
 
 .modal-overlay.show {
     display: flex;
 }
 
-@keyframes fadeIn {
+@keyframes modalFadeIn {
     to {
         opacity: 1;
     }
 }
 
-@keyframes fadeOut {
+@keyframes modalFadeOut {
     to {
         opacity: 0;
     }
