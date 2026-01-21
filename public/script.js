@@ -215,6 +215,7 @@ function showFormModal(editingId = null) {
             <div class="modal-content large">
                 <div class="modal-header">
                     <h3 class="modal-title">${isEditing ? 'Editar Preço' : 'Novo Preço'}</h3>
+                    <button class="close-modal" onclick="closeFormModal(true)">✕</button>
                 </div>
                 <form id="modalPrecoForm" onsubmit="handleSubmit(event)">
                     <input type="hidden" id="modalEditId" value="${editingId || ''}">
