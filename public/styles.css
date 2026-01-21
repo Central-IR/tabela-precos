@@ -409,9 +409,23 @@ button {
     transition: all 0.3s ease;
 }
 
+/* EXCEÇÃO: Botão X não deve herdar estilos de button */
+button.close-modal {
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
 button:hover:not(:disabled) {
     opacity: 0.9;
     transform: translateY(-1px);
+}
+
+/* EXCEÇÃO: Botão X não deve ter efeito hover de outros botões */
+button.close-modal:hover {
+    opacity: 1 !important;
+    transform: none !important;
 }
 
 button:disabled {
@@ -529,7 +543,7 @@ button.small {
     }
 }
 
-@keyframes modalFadeOut {
+@keyframes fadeOut {
     to {
         opacity: 0;
     }
@@ -573,6 +587,40 @@ button.small {
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
+}
+
+/* BOTÃO X SEM COR DE PREENCHIMENTO */
+.close-modal {
+    background: transparent !important;
+    border: none !important;
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
+    box-shadow: none !important;
+}
+
+.close-modal:hover {
+    color: var(--text-primary);
+    background: transparent !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.close-modal:active {
+    background: transparent !important;
+}
+
+.close-modal:focus {
+    background: transparent !important;
+    outline: none;
 }
 
 .modal-message {
