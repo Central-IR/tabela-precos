@@ -442,6 +442,10 @@ button.danger, button.delete, .action-btn.delete {
     background: var(--btn-delete);
 }
 
+button.cancel {
+    background: #1A1A1A;
+}
+
 button.edit, .action-btn.edit {
     background: var(--btn-edit);
 }
