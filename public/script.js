@@ -237,7 +237,7 @@ function showFormModal(editingId = null) {
                             <textarea id="modalDescricao" rows="3" required>${preco?.descricao || ''}</textarea>
                         </div>
                     </div>
-                    <div class="modal-actions">
+                    <div class="modal-actions modal-actions-right">
                         <button type="submit" class="save">${isEditing ? 'Atualizar' : 'Salvar'}</button>
                         <button type="button" onclick="closeFormModal(true)" class="danger">Cancelar</button>
                     </div>
@@ -382,14 +382,14 @@ function showDeleteModal(id) {
     const modalHTML = `
         <div class="modal-overlay" id="deleteModal" style="display: flex;">
             <div class="modal-content">
-                <div class="modal-header">
+                <div class="modal-header modal-header-no-border">
                     <h3 class="modal-title">Confirmar Exclusão</h3>
                     <button class="close-modal" onclick="closeDeleteModal()">✕</button>
                 </div>
                 <div class="modal-message">
                     Tem certeza que deseja excluir este preço?
                 </div>
-                <div class="modal-actions">
+                <div class="modal-actions modal-actions-no-border">
                     <button type="button" onclick="confirmDelete('${id}')" class="register">Sim</button>
                     <button type="button" onclick="closeDeleteModal()" class="danger">Cancelar</button>
                 </div>
