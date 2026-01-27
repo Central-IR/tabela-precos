@@ -381,12 +381,9 @@ window.deletePreco = function(id) {
 function showDeleteModal(id) {
     const modalHTML = `
         <div class="modal-overlay" id="deleteModal" style="display: flex;">
-            <div class="modal-content">
-                <div class="modal-header modal-header-no-border" style="padding-bottom: 0; margin-bottom: 0; border: none;">
-                    <span></span>
-                    <button class="close-modal" onclick="closeDeleteModal()">✕</button>
-                </div>
-                <div class="modal-message">
+            <div class="modal-content modal-delete">
+                <button class="close-modal" onclick="closeDeleteModal()">✕</button>
+                <div class="modal-message-delete">
                     Tem certeza que deseja excluir este preço?
                 </div>
                 <div class="modal-actions modal-actions-no-border">
