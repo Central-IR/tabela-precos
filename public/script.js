@@ -382,8 +382,8 @@ function showDeleteModal(id) {
     const modalHTML = `
         <div class="modal-overlay" id="deleteModal" style="display: flex;">
             <div class="modal-content">
-                <div class="modal-header modal-header-no-border">
-                    <h3 class="modal-title">Confirmar Exclusão</h3>
+                <div class="modal-header modal-header-no-border" style="padding-bottom: 0; margin-bottom: 0; border: none;">
+                    <span></span>
                     <button class="close-modal" onclick="closeDeleteModal()">✕</button>
                 </div>
                 <div class="modal-message">
