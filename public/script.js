@@ -239,7 +239,7 @@ function showFormModal(editingId = null) {
                     </div>
                     <div class="modal-actions modal-actions-right">
                         <button type="submit" class="save">${isEditing ? 'Atualizar' : 'Salvar'}</button>
-                        <button type="button" onclick="closeFormModal(true)" class="danger">Cancelar</button>
+                        <button type="button" onclick="closeFormModal(true)" class="cancel">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -391,7 +391,7 @@ function showDeleteModal(id) {
                 </div>
                 <div class="modal-actions modal-actions-no-border">
                     <button type="button" onclick="confirmDelete('${id}')" class="register">Sim</button>
-                    <button type="button" onclick="closeDeleteModal()" class="danger">Cancelar</button>
+                    <button type="button" onclick="closeDeleteModal()" class="cancel">Cancelar</button>
                 </div>
             </div>
         </div>
