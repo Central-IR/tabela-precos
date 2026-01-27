@@ -14,16 +14,19 @@
     --table-stripe: #FAFAFA;
     --table-hover: rgba(0, 0, 0, 0.02);
     --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    --th-bg: #6B7280;
+    --th-bg: #1A1A1A;
     --th-color: #FFFFFF;
     --th-border: #E5E7EB;
     --shadow: rgba(0, 0, 0, 0.08);
     --btn-register: #3B82F6;
     --btn-delete: #EF4444;
-    --btn-edit: #6B7280;
+    --btn-edit: #1E3A8A;
     --btn-view: #F59E0B;
     --btn-save: #22C55E;
+    --btn-cancel: #6B7280;
     --alert-color: #EF4444;
+    --filter-active-bg: #1A1A1A;
+    --filter-active-color: #FFFFFF;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -37,11 +40,13 @@
         --input-bg: #2A2A2A;
         --table-stripe: #1F1F1F;
         --card-shadow: none;
-        --th-bg: #4A4A4A;
-        --th-color: #FFFFFF;
+        --th-bg: #FFFFFF;
+        --th-color: #1A1A1A;
         --th-border: #5A5A5A;
         --shadow: rgba(0, 0, 0, 0.3);
         --table-hover: rgba(128, 128, 128, 0.15);
+        --filter-active-bg: #FFFFFF;
+        --filter-active-color: #1A1A1A;
     }
 }
 
@@ -258,9 +263,9 @@ h3 {
 }
 
 .brand-button.active {
-    background: #6B7280;
-    color: white;
-    border-color: #4B5563;
+    background: var(--filter-active-bg);
+    color: var(--filter-active-color);
+    border-color: var(--filter-active-bg);
 }
 
 /* SEARCH BAR */
@@ -443,7 +448,7 @@ button.danger, button.delete, .action-btn.delete {
 }
 
 button.cancel {
-    background: #1A1A1A;
+    background: var(--btn-cancel);
 }
 
 button.edit, .action-btn.edit {
