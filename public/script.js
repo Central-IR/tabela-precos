@@ -238,8 +238,8 @@ function showFormModal(editingId = null) {
                         </div>
                     </div>
                     <div class="modal-actions">
-                        <button type="button" onclick="closeFormModal(true)" class="secondary">Cancelar</button>
                         <button type="submit" class="save">${isEditing ? 'Atualizar' : 'Salvar'}</button>
+                        <button type="button" onclick="closeFormModal(true)" class="danger">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -374,8 +374,42 @@ window.editPreco = function(id) {
     showFormModal(id);
 };
 
-window.deletePreco = async function(id) {
-    if (!confirm('Tem certeza que deseja excluir este preço?')) return;
+window.deletePreco = function(id) {
+    showDeleteModal(id);
+};
+
+function showDeleteModal(id) {
+    const modalHTML = `
+        <div class="modal-overlay" id="deleteModal" style="display: flex;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Confirmar Exclusão</h3>
+                    <button class="close-modal" onclick="closeDeleteModal()">✕</button>
+                </div>
+                <div class="modal-message">
+                    Tem certeza que deseja excluir este preço?
+                </div>
+                <div class="modal-actions">
+                    <button type="button" onclick="confirmDelete('${id}')" class="register">Sim</button>
+                    <button type="button" onclick="closeDeleteModal()" class="danger">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function closeDeleteModal() {
+    const modal = document.getElementById('deleteModal');
+    if (modal) {
+        modal.style.animation = 'fadeOut 0.2s ease forwards';
+        setTimeout(() => modal.remove(), 200);
+    }
+}
+
+async function confirmDelete(id) {
+    closeDeleteModal();
 
     if (!isOnline) {
         showToast('Sistema offline. Não foi possível excluir.', 'error');
@@ -425,7 +459,7 @@ window.deletePreco = async function(id) {
             showToast('Erro ao excluir preço', 'error');
         }
     }
-};
+}
 
 function filterPrecos() {
     const searchTerm = document.getElementById('search').value.toLowerCase();
