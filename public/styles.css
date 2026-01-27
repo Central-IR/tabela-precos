@@ -640,6 +640,20 @@ button.small {
     border-top: 2px solid var(--border-color);
 }
 
+.modal-actions-right {
+    justify-content: flex-end;
+}
+
+.modal-actions-no-border {
+    border-top: none;
+    padding-top: 0;
+}
+
+.modal-header-no-border {
+    border-bottom: none;
+    padding-bottom: 0.5rem;
+}
+
 .modal-actions button {
     margin: 0;
     min-width: 120px;
