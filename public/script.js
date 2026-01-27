@@ -390,7 +390,7 @@ function showDeleteModal(id) {
                     Tem certeza que deseja excluir este preço?
                 </div>
                 <div class="modal-actions modal-actions-no-border">
-                    <button type="button" onclick="confirmDelete('${id}')" class="register">Sim</button>
+                    <button type="button" onclick="confirmDelete('${id}')" class="danger">Sim</button>
                     <button type="button" onclick="closeDeleteModal()" class="secondary">Cancelar</button>
                 </div>
             </div>
