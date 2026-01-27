@@ -14,7 +14,7 @@
     --table-stripe: #FAFAFA;
     --table-hover: rgba(0, 0, 0, 0.02);
     --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-    --th-bg: #1A1A1A;
+    --th-bg: #374151;
     --th-color: #FFFFFF;
     --th-border: #E5E7EB;
     --shadow: rgba(0, 0, 0, 0.08);
@@ -25,7 +25,7 @@
     --btn-save: #22C55E;
     --btn-cancel: #6B7280;
     --alert-color: #EF4444;
-    --filter-active-bg: #1A1A1A;
+    --filter-active-bg: #374151;
     --filter-active-color: #FFFFFF;
 }
 
@@ -40,13 +40,13 @@
         --input-bg: #2A2A2A;
         --table-stripe: #1F1F1F;
         --card-shadow: none;
-        --th-bg: #FFFFFF;
-        --th-color: #1A1A1A;
+        --th-bg: #D1D5DB;
+        --th-color: #1F2937;
         --th-border: #5A5A5A;
         --shadow: rgba(0, 0, 0, 0.3);
         --table-hover: rgba(128, 128, 128, 0.15);
-        --filter-active-bg: #FFFFFF;
-        --filter-active-color: #1A1A1A;
+        --filter-active-bg: #D1D5DB;
+        --filter-active-color: #1F2937;
     }
 }
 
