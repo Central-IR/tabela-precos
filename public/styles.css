@@ -999,7 +999,7 @@ button.small {
     background: var(--bg-card);
     border-radius: 16px;
     padding: 2rem;
-    max-width: 500px;
+    max-width: 420px;
     width: 95%;
     max-height: 90vh;
     overflow-y: auto;
@@ -1026,25 +1026,29 @@ button.small {
 }
 
 .modal-message-delete {
-    margin: 2rem 0 2.5rem 0;
+    margin: 2rem 1rem 2rem 1rem;
     color: var(--text-primary);
-    font-size: 1.25rem;
-    line-height: 1.6;
+    font-size: 1.05rem;
+    line-height: 1.5;
     text-align: center;
-    font-weight: 500;
+    font-weight: 400;
 }
 
 .modal-actions-no-border {
     display: flex;
-    gap: 0.75rem;
+    gap: 0.5rem;
     justify-content: center;
     border-top: none;
     padding-top: 0;
+    margin-top: 0.5rem;
 }
 
 .modal-actions-no-border button {
     margin: 0;
-    min-width: 120px;
+    min-width: 110px;
+    max-width: 130px;
+    padding: 10px 20px;
+    font-size: 0.9rem;
 }
 
 @keyframes scaleIn {
