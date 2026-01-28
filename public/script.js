@@ -87,86 +87,61 @@ window.handleEditClick = function(id) {
     showFormModal(String(id));
 };
 
-window.handleDeleteClick = async function(id) {
-    try {
-        console.log('🗑️ Tentando excluir frete:', id);
-        
-        const idStr = String(id);
-        const freteToDelete = fretes.find(f => String(f.id) === idStr);
-        
-        if (!freteToDelete) {
-            console.error('❌ Frete não encontrado:', id);
-            showToast('Frete não encontrado!', 'error');
-            return;
-        }
-        
-        const numeroNF = freteToDelete.numero_nf || 'sem número';
-        console.log('📋 Frete encontrado - NF:', numeroNF);
-        
-        // Verificar se showConfirm existe
-        if (typeof window.showConfirm !== 'function') {
-            console.error('❌ showConfirm não está definido!');
-            const confirmar = confirm(`Tem certeza que deseja excluir a NF ${numeroNF}?`);
-            if (!confirmar) return;
-        } else {
-            console.log('✅ Abrindo modal de confirmação...');
-            
-            // Usar modal de confirmação personalizado
-            const confirmar = await window.showConfirm(
-                `Tem certeza que deseja excluir a NF ${numeroNF}?`,
-                {
-                    title: 'Confirmar Exclusão',
-                    confirmText: 'Sim',
-                    cancelText: 'Cancelar',
-                    type: 'danger'
-                }
-            );
-            
-            if (!confirmar) {
-                console.log('❌ Exclusão cancelada pelo usuário');
-                return;
+window.handleDeleteClick = function(id) {
+    console.log('🗑️ Tentando excluir frete:', id);
+    
+    const idStr = String(id);
+    const freteToDelete = fretes.find(f => String(f.id) === idStr);
+    
+    if (!freteToDelete) {
+        showToast('Frete não encontrado!', 'error');
+        return;
+    }
+    
+    const numeroNF = freteToDelete.numero_nf || 'sem número';
+    
+    const confirmar = confirm(`Tem certeza que deseja excluir a NF ${numeroNF}?`);
+    
+    if (!confirmar) {
+        console.log('❌ Exclusão cancelada pelo usuário');
+        return;
+    }
+    
+    console.log('✅ Usuário confirmou exclusão');
+    console.log('🗑️ Deletando NF:', numeroNF);
+    
+    // Remover da lista local primeiro
+    fretes = fretes.filter(f => String(f.id) !== idStr);
+    updateAllFilters();
+    updateDashboard();
+    filterFretes();
+    showToast(`NF ${numeroNF} Excluído`, 'success');
+    
+    // Deletar no servidor
+    if (isOnline || DEVELOPMENT_MODE) {
+        fetch(`${API_URL}/fretes/${idStr}`, {
+            method: 'DELETE',
+            headers: {
+                'X-Session-Token': sessionToken,
+                'Accept': 'application/json'
+            },
+            mode: 'cors'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Erro ao deletar no servidor');
+            console.log('✅ Deletado no servidor com sucesso');
+        })
+        .catch(error => {
+            console.error('❌ Erro ao deletar no servidor:', error);
+            // Restaurar o frete se falhar no servidor
+            if (freteToDelete) {
+                fretes.push(freteToDelete);
+                updateAllFilters();
+                updateDashboard();
+                filterFretes();
+                showToast('Erro ao excluir no servidor', 'error');
             }
-        }
-        
-        console.log('✅ Usuário confirmou exclusão');
-        console.log('🗑️ Deletando NF:', numeroNF);
-        
-        // Remover da lista local primeiro
-        fretes = fretes.filter(f => String(f.id) !== idStr);
-        updateAllFilters();
-        updateDashboard();
-        filterFretes();
-        showToast(`NF ${numeroNF} Excluído`, 'success');
-        
-        // Deletar no servidor
-        if (isOnline || DEVELOPMENT_MODE) {
-            fetch(`${API_URL}/fretes/${idStr}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-Session-Token': sessionToken,
-                    'Accept': 'application/json'
-                },
-                mode: 'cors'
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('Erro ao deletar no servidor');
-                console.log('✅ Deletado no servidor com sucesso');
-            })
-            .catch(error => {
-                console.error('❌ Erro ao deletar no servidor:', error);
-                // Restaurar o frete se falhar no servidor
-                if (freteToDelete) {
-                    fretes.push(freteToDelete);
-                    updateAllFilters();
-                    updateDashboard();
-                    filterFretes();
-                    showToast('Erro ao excluir no servidor', 'error');
-                }
-            });
-        }
-    } catch (error) {
-        console.error('💥 Erro em handleDeleteClick:', error);
-        showToast('Erro ao processar exclusão', 'error');
+        });
     }
 };
 
@@ -769,77 +744,6 @@ function renderizarDashboards(dadosMensais) {
         </div>
     `;
 }
-
-// ============================================
-// MODAL DE CONFIRMAÇÃO
-// ============================================
-function showConfirm(message, options = {}) {
-    return new Promise((resolve) => {
-        const { title = 'Confirmação', confirmText = 'Confirmar', cancelText = 'Cancelar', type = 'warning' } = options;
-
-        const modalHTML = `
-            <div class="modal-overlay" id="confirmModal" style="display: flex !important; z-index: 10001 !important;">
-                <div class="modal-content modal-delete">
-                    <button class="close-modal" id="confirmModalClose">✕</button>
-                    <div class="modal-message-delete">
-                        ${message}
-                    </div>
-                    <div class="modal-actions modal-actions-no-border">
-                        <button type="button" class="${type === 'danger' ? 'danger' : 'success'}" id="modalConfirmBtn">${confirmText}</button>
-                        <button type="button" class="secondary" id="modalCancelBtn">${cancelText}</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        const modal = document.getElementById('confirmModal');
-        const confirmBtn = document.getElementById('modalConfirmBtn');
-        const cancelBtn = document.getElementById('modalCancelBtn');
-        const closeBtn = document.getElementById('confirmModalClose');
-
-        // Forçar display do modal
-        if (modal) {
-            modal.style.display = 'flex';
-            modal.style.opacity = '1';
-        }
-
-        const closeModal = (result) => {
-            if (modal) {
-                modal.style.animation = 'fadeOut 0.2s ease forwards';
-                setTimeout(() => { 
-                    modal.remove(); 
-                    resolve(result); 
-                }, 200);
-            } else {
-                resolve(result);
-            }
-        };
-
-        if (confirmBtn) confirmBtn.addEventListener('click', () => closeModal(true));
-        if (cancelBtn) cancelBtn.addEventListener('click', () => closeModal(false));
-        if (closeBtn) closeBtn.addEventListener('click', () => closeModal(false));
-        
-        // Fechar ao clicar fora do modal
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeModal(false);
-                }
-            });
-        }
-
-        if (!document.querySelector('#modalAnimations')) {
-            const style = document.createElement('style');
-            style.id = 'modalAnimations';
-            style.textContent = `@keyframes fadeOut { to { opacity: 0; } }`;
-            document.head.appendChild(style);
-        }
-    });
-}
-
-// Exportar para window
-window.showConfirm = showConfirm;
 
 // ============================================
 // FORMULÁRIO COM OBSERVAÇÕES
