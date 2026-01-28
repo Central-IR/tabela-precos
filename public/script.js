@@ -298,7 +298,7 @@ async function handleSubmit(event) {
     }
 
     if (!isOnline) {
-        showToast('Sistema offline. Dados não foram salvos.', 'error');
+        showToast('Sistema offline', 'error');
         closeFormModal();
         return;
     }
@@ -352,10 +352,10 @@ async function handleSubmit(event) {
         if (editId) {
             const index = precos.findIndex(p => p.id === editId);
             if (index !== -1) precos[index] = savedData;
-            showToast('Preço atualizado com sucesso!', 'success');
+            showToast('Item atualizado', 'success');
         } else {
             precos.push(savedData);
-            showToast('Preço criado com sucesso!', 'success');
+            showToast('Item registrado', 'success');
         }
 
         filterPrecos();
