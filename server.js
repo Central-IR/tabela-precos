@@ -6,51 +6,79 @@ const fs = require('fs');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3002;
 
 // CONFIGURAÇÃO DO SUPABASE
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ ERRO: SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados');
+    console.error('❌ ERRO: Variáveis de ambiente do Supabase não configuradas');
     process.exit(1);
 }
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-console.log('✅ Supabase configurado:', supabaseUrl);
 
 // MIDDLEWARES
 app.use(cors({
     origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-Token']
 }));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Log de requisições
-app.use((req, res, next) => {
-    console.log(`📥 ${new Date().toISOString()} - ${req.method} ${req.path}`);
+// REGISTRO DE ACESSOS SILENCIOSO
+const logFilePath = path.join(__dirname, 'acessos.log');
+let accessCount = 0;
+let uniqueIPs = new Set();
+
+function registrarAcesso(req, res, next) {
+    const xForwardedFor = req.headers['x-forwarded-for'];
+    const clientIP = xForwardedFor
+        ? xForwardedFor.split(',')[0].trim()
+        : req.socket.remoteAddress;
+
+    const cleanIP = clientIP.replace('::ffff:', '');
+    const logEntry = `[${new Date().toISOString()}] ${cleanIP} - ${req.method} ${req.path}\n`;
+
+    // Salva no arquivo (silencioso)
+    fs.appendFile(logFilePath, logEntry, () => {});
+    
+    // Conta acessos (sem mostrar)
+    accessCount++;
+    uniqueIPs.add(cleanIP);
+    
     next();
-});
+}
+
+app.use(registrarAcesso);
+
+// Relatório periódico (opcional - a cada 1 hora)
+setInterval(() => {
+    if (accessCount > 0) {
+        console.log(`📊 Última hora: ${accessCount} requisições de ${uniqueIPs.size} IPs únicos`);
+        accessCount = 0;
+        uniqueIPs.clear();
+    }
+}, 3600000); // 1 hora
 
 // AUTENTICAÇÃO
 const PORTAL_URL = process.env.PORTAL_URL || 'https://ir-comercio-portal-zcan.onrender.com';
 
 async function verificarAutenticacao(req, res, next) {
-    const publicPaths = ['/', '/health'];
+    const publicPaths = ['/', '/health', '/app'];
     if (publicPaths.includes(req.path)) {
         return next();
     }
 
-    const sessionToken = req.headers['x-session-token'];
+    const sessionToken = req.headers['x-session-token'] || req.query.sessionToken;
 
     if (!sessionToken) {
         return res.status(401).json({
             error: 'Não autenticado',
-            message: 'Token de sessão não encontrado'
+            redirectToLogin: true
         });
     }
 
@@ -64,7 +92,7 @@ async function verificarAutenticacao(req, res, next) {
         if (!verifyResponse.ok) {
             return res.status(401).json({
                 error: 'Sessão inválida',
-                message: 'Sua sessão expirou'
+                redirectToLogin: true
             });
         }
 
@@ -73,7 +101,7 @@ async function verificarAutenticacao(req, res, next) {
         if (!sessionData.valid) {
             return res.status(401).json({
                 error: 'Sessão inválida',
-                message: sessionData.message || 'Sua sessão expirou'
+                redirectToLogin: true
             });
         }
 
@@ -81,35 +109,44 @@ async function verificarAutenticacao(req, res, next) {
         req.sessionToken = sessionToken;
         next();
     } catch (error) {
-        console.error('❌ Erro ao verificar autenticação:', error);
         return res.status(500).json({
-            error: 'Erro interno',
-            message: 'Erro ao verificar autenticação'
+            error: 'Erro ao verificar autenticação'
         });
     }
 }
 
-// SERVIR ARQUIVOS ESTÁTICOS
+// ARQUIVOS ESTÁTICOS
 const publicPath = path.join(__dirname, 'public');
-app.use(express.static(publicPath));
+
+app.use(express.static(publicPath, {
+    index: 'index.html',
+    dotfiles: 'deny',
+    setHeaders: (res, path) => {
+        if (path.endsWith('.html')) {
+            res.setHeader('Content-Type', 'text/html');
+        } else if (path.endsWith('.css')) {
+            res.setHeader('Content-Type', 'text/css');
+        } else if (path.endsWith('.js')) {
+            res.setHeader('Content-Type', 'application/javascript');
+        }
+    }
+}));
 
 // HEALTH CHECK
 app.get('/health', async (req, res) => {
     try {
         const { error } = await supabase
-            .from('controle_frete')
+            .from('precos')
             .select('count', { count: 'exact', head: true });
         
         res.json({
             status: error ? 'unhealthy' : 'healthy',
             database: error ? 'disconnected' : 'connected',
-            timestamp: new Date().toISOString(),
-            service: 'Controle de Frete API'
+            timestamp: new Date().toISOString()
         });
     } catch (error) {
         res.json({
             status: 'unhealthy',
-            error: error.message,
             timestamp: new Date().toISOString()
         });
     }
@@ -118,331 +155,161 @@ app.get('/health', async (req, res) => {
 // ROTAS DA API
 app.use('/api', verificarAutenticacao);
 
-// GET - Listar todos os fretes
-app.get('/api/fretes', async (req, res) => {
+app.head('/api/precos', (req, res) => {
+    res.status(200).end();
+});
+
+// Listar preços
+app.get('/api/precos', async (req, res) => {
     try {
         const { data, error } = await supabase
-            .from('controle_frete')
+            .from('precos')
             .select('*')
-            .order('data_emissao', { ascending: false });
+            .order('marca', { ascending: true });
 
         if (error) throw error;
-        res.json(data);
+        res.json(data || []);
     } catch (error) {
-        console.error('❌ Erro ao buscar fretes:', error);
         res.status(500).json({ 
-            error: 'Erro ao buscar fretes',
-            details: error.message 
+            error: 'Erro ao buscar preços'
         });
     }
 });
 
-// GET - Buscar por ID
-app.get('/api/fretes/:id', async (req, res) => {
+// Buscar preço específico
+app.get('/api/precos/:id', async (req, res) => {
     try {
-        const { id } = req.params;
-
         const { data, error } = await supabase
-            .from('controle_frete')
+            .from('precos')
             .select('*')
-            .eq('id', id)
+            .eq('id', req.params.id)
             .single();
 
-        if (error) throw error;
-
-        if (!data) {
-            return res.status(404).json({ error: 'Frete não encontrado' });
+        if (error) {
+            return res.status(404).json({ error: 'Preço não encontrado' });
         }
-
+        
         res.json(data);
     } catch (error) {
-        console.error('❌ Erro ao buscar frete:', error);
         res.status(500).json({ 
-            error: 'Erro ao buscar frete',
-            details: error.message 
+            error: 'Erro ao buscar preço'
         });
     }
 });
 
-// POST - Criar frete
-app.post('/api/fretes', async (req, res) => {
+// Criar preço
+app.post('/api/precos', async (req, res) => {
     try {
-        console.log('📝 Criando frete:', req.body);
-        
-        const {
-            numero_nf,
-            data_emissao,
-            documento,
-            valor_nf,
-            tipo_nf,
-            nome_orgao,
-            contato_orgao,
-            vendedor,
-            transportadora,
-            valor_frete,
-            data_coleta,
-            cidade_destino,
-            previsao_entrega,
-            data_entrega,
-            observacoes
-        } = req.body;
+        const { marca, codigo, preco, descricao } = req.body;
 
-        // Validações mínimas
-        if (!numero_nf || !nome_orgao || !data_coleta) {
-            return res.status(400).json({ 
-                error: 'Campos obrigatórios faltando: numero_nf, nome_orgao, data_coleta'
-            });
-        }
-
-        // Calcular status baseado no tipo_nf
-        let status = 'EM_TRANSITO'; // Default para ENVIO
-        
-        const tipoNf = tipo_nf || 'ENVIO';
-        
-        // Tipos que usam status: ENVIO, SIMPLES_REMESSA, REMESSA_AMOSTRA
-        const tiposComStatus = ['ENVIO', 'SIMPLES_REMESSA', 'REMESSA_AMOSTRA'];
-        
-        // Se não for um dos tipos com status, status é null
-        if (!tiposComStatus.includes(tipoNf)) {
-            status = null;
+        if (!marca || !codigo || !preco || !descricao) {
+            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
         }
 
         const { data, error } = await supabase
-            .from('controle_frete')
+            .from('precos')
             .insert([{
-                numero_nf,
-                data_emissao: data_emissao || new Date().toISOString().split('T')[0],
-                documento: documento || 'NÃO INFORMADO',
-                valor_nf: valor_nf || 0,
-                tipo_nf: tipoNf,
-                nome_orgao,
-                contato_orgao: contato_orgao || 'NÃO INFORMADO',
-                vendedor: vendedor || 'NÃO INFORMADO',
-                transportadora: transportadora || 'NÃO INFORMADO',
-                valor_frete: valor_frete || 0,
-                data_coleta,
-                cidade_destino: cidade_destino || 'NÃO INFORMADO',
-                previsao_entrega: previsao_entrega || null,
-                data_entrega: data_entrega || null,
-                status,
-                observacoes: observacoes || '[]'
+                marca: marca.trim(),
+                codigo: codigo.trim(),
+                preco: parseFloat(preco),
+                descricao: descricao.trim(),
+                timestamp: new Date().toISOString()
             }])
             .select()
             .single();
 
         if (error) throw error;
-
-        console.log('✅ Frete criado:', data.id);
         res.status(201).json(data);
     } catch (error) {
-        console.error('❌ Erro ao criar frete:', error);
         res.status(500).json({ 
-            error: 'Erro ao criar frete',
-            details: error.message 
+            error: 'Erro ao criar preço'
         });
     }
 });
 
-// PUT - Atualizar frete
-app.put('/api/fretes/:id', async (req, res) => {
+// Atualizar preço
+app.put('/api/precos/:id', async (req, res) => {
     try {
-        const { id } = req.params;
-        console.log(`✏️ Atualizando frete: ${id}`);
-        console.log('📦 Dados recebidos:', req.body);
-        
-        const {
-            numero_nf,
-            data_emissao,
-            documento,
-            valor_nf,
-            tipo_nf,
-            nome_orgao,
-            contato_orgao,
-            vendedor,
-            transportadora,
-            valor_frete,
-            data_coleta,
-            cidade_destino,
-            previsao_entrega,
-            data_entrega,
-            observacoes
-        } = req.body;
+        const { marca, codigo, preco, descricao } = req.body;
 
-        const tipoNf = tipo_nf || 'ENVIO';
-        
-        // Tipos que usam status: ENVIO, SIMPLES_REMESSA, REMESSA_AMOSTRA
-        const tiposComStatus = ['ENVIO', 'SIMPLES_REMESSA', 'REMESSA_AMOSTRA'];
-        
-        // LÓGICA DE STATUS ATUALIZADA:
-        // 1. Se não é tipo com status → status = null
-        // 2. Se tem data_entrega definida → status = ENTREGUE (data_entrega tem prioridade)
-        // 3. Se não tem data_entrega → status = EM_TRANSITO (padrão)
-        
-        let status;
-        
-        if (!tiposComStatus.includes(tipoNf)) {
-            // Tipos especiais não têm status
-            status = null;
-        } else if (data_entrega) {
-            // Se tem data de entrega, está ENTREGUE (prioridade máxima)
-            status = 'ENTREGUE';
-            console.log(`✅ Status definido como ENTREGUE (data_entrega: ${data_entrega})`);
-        } else {
-            // Se não tem data de entrega, volta para EM_TRANSITO
-            status = 'EM_TRANSITO';
-            console.log(`📦 Status definido como EM_TRANSITO (sem data_entrega)`);
-        }
-        
-        console.log(`📝 Atualizando tipo_nf para: ${tipoNf}`);
-        console.log(`📝 Atualizando status para: ${status}`);
-
-        const updateData = {
-            numero_nf,
-            data_emissao,
-            documento,
-            valor_nf,
-            tipo_nf: tipoNf,
-            nome_orgao,
-            contato_orgao,
-            vendedor,
-            transportadora,
-            valor_frete,
-            data_coleta,
-            cidade_destino,
-            previsao_entrega,
-            data_entrega: data_entrega || null,
-            status,
-            observacoes: observacoes || '[]'
-        };
-
-        const { data, error } = await supabase
-            .from('controle_frete')
-            .update(updateData)
-            .eq('id', id)
-            .select()
-            .single();
-
-        if (error) throw error;
-
-        if (!data) {
-            return res.status(404).json({ error: 'Frete não encontrado' });
-        }
-
-        console.log('✅ Frete atualizado:', data);
-        res.json(data);
-    } catch (error) {
-        console.error('❌ Erro ao atualizar frete:', error);
-        res.status(500).json({ 
-            error: 'Erro ao atualizar frete',
-            details: error.message 
-        });
-    }
-});
-
-// PATCH - Toggle status (checkbox) + data_entrega
-app.patch('/api/fretes/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { status, data_entrega } = req.body;
-
-        console.log(`🔄 Toggle status do frete ${id} para: ${status}`);
-        if (data_entrega !== undefined) {
-            console.log(`📅 Definindo data_entrega para: ${data_entrega}`);
-        }
-
-        // Preparar dados para atualização
-        const updateData = { status };
-        
-        // Se data_entrega foi enviada, incluir na atualização
-        if (data_entrega !== undefined) {
-            updateData.data_entrega = data_entrega;
+        if (!marca || !codigo || !preco || !descricao) {
+            return res.status(400).json({ error: 'Todos os campos são obrigatórios' });
         }
 
         const { data, error } = await supabase
-            .from('controle_frete')
-            .update(updateData)
-            .eq('id', id)
+            .from('precos')
+            .update({
+                marca: marca.trim(),
+                codigo: codigo.trim(),
+                preco: parseFloat(preco),
+                descricao: descricao.trim(),
+                timestamp: new Date().toISOString()
+            })
+            .eq('id', req.params.id)
             .select()
             .single();
 
-        if (error) throw error;
-
-        if (!data) {
-            return res.status(404).json({ error: 'Frete não encontrado' });
+        if (error) {
+            return res.status(404).json({ error: 'Preço não encontrado' });
         }
-
-        console.log('✅ Status atualizado');
+        
         res.json(data);
     } catch (error) {
-        console.error('❌ Erro ao atualizar status:', error);
         res.status(500).json({ 
-            error: 'Erro ao atualizar status',
-            details: error.message 
+            error: 'Erro ao atualizar preço'
         });
     }
 });
 
-// DELETE - Excluir frete
-app.delete('/api/fretes/:id', async (req, res) => {
+// Deletar preço
+app.delete('/api/precos/:id', async (req, res) => {
     try {
-        const { id } = req.params;
-        console.log(`🗑️ Deletando frete: ${id}`);
-
         const { error } = await supabase
-            .from('controle_frete')
+            .from('precos')
             .delete()
-            .eq('id', id);
+            .eq('id', req.params.id);
 
         if (error) throw error;
-
-        console.log('✅ Frete deletado');
-        res.json({ message: 'Frete excluído com sucesso' });
+        res.status(204).end();
     } catch (error) {
-        console.error('❌ Erro ao excluir frete:', error);
         res.status(500).json({ 
-            error: 'Erro ao excluir frete',
-            details: error.message 
+            error: 'Erro ao excluir preço'
         });
     }
 });
 
 // ROTA PRINCIPAL
 app.get('/', (req, res) => {
-    res.json({ 
-        status: 'online',
-        service: 'Controle de Frete API',
-        version: '2.2.0',
-        timestamp: new Date().toISOString(),
-        updates: 'Adicionado suporte a data_entrega e username em observações'
-    });
+    res.sendFile(path.join(publicPath, 'index.html'));
 });
 
-// ROTA 404
+app.get('/app', (req, res) => {
+    res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+// 404
 app.use((req, res) => {
     res.status(404).json({
-        error: '404 - Rota não encontrada',
-        path: req.path
+        error: '404 - Rota não encontrada'
     });
 });
 
 // TRATAMENTO DE ERROS
 app.use((error, req, res, next) => {
-    console.error('💥 Erro no servidor:', error);
     res.status(500).json({
-        error: 'Erro interno do servidor',
-        message: error.message
+        error: 'Erro interno do servidor'
     });
 });
 
 // INICIAR SERVIDOR
 app.listen(PORT, '0.0.0.0', () => {
-    console.log('\n🚀 ================================');
-    console.log(`🚀 Controle de Frete API v2.2.0`);
-    console.log(`🚀 Servidor rodando na porta ${PORT}`);
-    console.log(`🔗 Supabase URL: ${supabaseUrl}`);
-    console.log(`📁 Public folder: ${publicPath}`);
-    console.log(`🔐 Autenticação: Ativa`);
-    console.log(`🌐 Portal URL: ${PORTAL_URL}`);
-    console.log(`✨ Novo: data_entrega + username`);
-    console.log('🚀 ================================\n');
+    console.log(`✅ Servidor rodando na porta ${PORT}`);
+    console.log(`✅ Database: Conectado`);
+    console.log(`✅ Autenticação: Ativa`);
+    console.log(`📝 Logs salvos em: acessos.log\n`);
 });
+
+// Verificar pasta public
+if (!fs.existsSync(publicPath)) {
+    console.error('⚠️  Pasta public/ não encontrada!');
+}
