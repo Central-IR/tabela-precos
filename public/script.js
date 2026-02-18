@@ -58,8 +58,11 @@ function mostrarTelaAcessoNegado(mensagem = 'NÃO AUTORIZADO') {
     `;
 }
 
-function inicializarApp() {
-    checkServerStatus();
+async function inicializarApp() {
+    // Verifica status e já seta isOnline antes de qualquer coisa
+    await checkServerStatus();
+    // Carrega marcas e dados independentemente (checkServerStatus pode não transitar wasOffline→online em edge cases)
+    if (isOnline) carregarMarcas();
     setInterval(checkServerStatus, 15000);
     // Polling leve — apenas recarrega página atual se online
     setInterval(() => {
@@ -104,8 +107,9 @@ async function checkServerStatus() {
         const wasOffline = !isOnline;
         isOnline = response.ok;
 
-        if (wasOffline && isOnline) {
-            console.log('✅ SERVIDOR ONLINE');
+        // Só recarrega automaticamente ao reconectar (não na primeira chamada, que é gerenciada por inicializarApp)
+        if (wasOffline && isOnline && state.marcasDisponiveis.length > 0) {
+            console.log('✅ SERVIDOR RECONECTADO');
             carregarMarcas();
         }
 
