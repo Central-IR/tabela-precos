@@ -131,32 +131,45 @@ async function verificarConexao() {
 
 async function carregarTudo() {
     try {
+        // Marcas: usa /api/marcas (retorna todas sem limite de paginação)
+        // Dados: usa /api/precos paginado
         const [marcasRes, precosRes] = await Promise.all([
-            fetchWithTimeout(`${API_URL}/precos?page=1&limit=9999`, { method: 'GET', headers: getHeaders() }),
+            fetchWithTimeout(`${API_URL}/marcas`, { method: 'GET', headers: getHeaders() }),
             fetchWithTimeout(`${API_URL}/precos?page=1&limit=${PAGE_SIZE}`, { method: 'GET', headers: getHeaders() })
         ]);
 
-        // Extrai marcas — suporta formato antigo (array) e novo ({ data: [] })
+        // Marcas
         if (marcasRes.ok) {
-            const allData = await marcasRes.json();
-            const items = Array.isArray(allData) ? allData : (allData.data || []);
-            const marcasSet = new Set();
-            items.forEach(p => { if (p.marca?.trim()) marcasSet.add(p.marca.trim()); });
-            state.marcasDisponiveis = [...marcasSet].sort();
+            const marcas = await marcasRes.json();
+            // /api/marcas retorna array de strings; /api/precos retorna array de objetos (servidor antigo)
+            if (Array.isArray(marcas) && typeof marcas[0] === 'string') {
+                state.marcasDisponiveis = marcas;
+            } else if (Array.isArray(marcas)) {
+                // fallback: array de objetos
+                const set = new Set();
+                marcas.forEach(p => { if (p.marca?.trim()) set.add(p.marca.trim()); });
+                state.marcasDisponiveis = [...set].sort();
+            }
             renderMarcasFilter();
         }
 
-        // Carrega primeira página — suporta formato antigo (array) e novo ({ data, total, ... })
+        // Dados paginados
         if (precosRes.ok) {
             const result = await precosRes.json();
             if (Array.isArray(result)) {
-                // Servidor antigo: retorna array direto, sem paginação real
+                // Servidor antigo sem paginação
                 state.precos = result.map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
                 state.totalRecords = result.length;
                 state.totalPages = 1;
                 state.currentPage = 1;
+                // Extrai marcas do array completo se /api/marcas falhou
+                if (!marcasRes.ok) {
+                    const set = new Set();
+                    result.forEach(p => { if (p.marca?.trim()) set.add(p.marca.trim()); });
+                    state.marcasDisponiveis = [...set].sort();
+                    renderMarcasFilter();
+                }
             } else {
-                // Servidor novo: retorna objeto paginado
                 state.precos = (result.data || []).map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
                 state.totalRecords = result.total || 0;
                 state.totalPages = result.totalPages || 1;
@@ -175,16 +188,19 @@ async function carregarTudo() {
 // Busca marcas disponíveis extraindo da listagem completa
 async function atualizarMarcas() {
     try {
-        const response = await fetchWithTimeout(`${API_URL}/precos?page=1&limit=9999`, {
+        const response = await fetchWithTimeout(`${API_URL}/marcas`, {
             method: 'GET',
             headers: getHeaders()
         });
         if (response.ok) {
-            const data = await response.json();
-            const items = Array.isArray(data) ? data : (data.data || []);
-            const marcasSet = new Set();
-            items.forEach(p => { if (p.marca?.trim()) marcasSet.add(p.marca.trim()); });
-            state.marcasDisponiveis = [...marcasSet].sort();
+            const marcas = await response.json();
+            if (Array.isArray(marcas) && typeof marcas[0] === 'string') {
+                state.marcasDisponiveis = marcas;
+            } else if (Array.isArray(marcas)) {
+                const set = new Set();
+                marcas.forEach(p => { if (p.marca?.trim()) set.add(p.marca.trim()); });
+                state.marcasDisponiveis = [...set].sort();
+            }
             renderMarcasFilter();
         }
     } catch (err) {
