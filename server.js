@@ -156,19 +156,19 @@ app.get('/health', async (req, res) => {
 app.use('/api', verificarAutenticacao);
 
 app.head('/api/precos', (req, res) => {
+    res.status(200).end();
+});
 
 // Listar marcas disponíveis
-app.get("/api/marcas", async (req, res) => {
+app.get('/api/marcas', async (req, res) => {
     try {
-        const { data, error } = await supabase.from("precos").select("marca");
+        const { data, error } = await supabase.from('precos').select('marca');
         if (error) throw error;
         const marcas = [...new Set((data || []).map(r => r.marca?.trim()).filter(Boolean))].sort();
         res.json(marcas);
     } catch (error) {
-        res.status(500).json({ error: "Erro ao buscar marcas" });
+        res.status(500).json({ error: 'Erro ao buscar marcas' });
     }
-});
-    res.status(200).end();
 });
 
 // Listar preços (com paginação)
