@@ -130,26 +130,66 @@ async function verificarConexao() {
 // ─── CARGA INICIAL (marcas + dados) ──────────────────────────────────────────
 
 async function carregarTudo() {
-    // 1. Carrega marcas
     try {
-        const response = await fetchWithTimeout(`${API_URL}/marcas`, {
+        const [marcasRes, precosRes] = await Promise.all([
+            fetchWithTimeout(`${API_URL}/precos?page=1&limit=9999`, { method: 'GET', headers: getHeaders() }),
+            fetchWithTimeout(`${API_URL}/precos?page=1&limit=${PAGE_SIZE}`, { method: 'GET', headers: getHeaders() })
+        ]);
+
+        // Extrai marcas — suporta formato antigo (array) e novo ({ data: [] })
+        if (marcasRes.ok) {
+            const allData = await marcasRes.json();
+            const items = Array.isArray(allData) ? allData : (allData.data || []);
+            const marcasSet = new Set();
+            items.forEach(p => { if (p.marca?.trim()) marcasSet.add(p.marca.trim()); });
+            state.marcasDisponiveis = [...marcasSet].sort();
+            renderMarcasFilter();
+        }
+
+        // Carrega primeira página — suporta formato antigo (array) e novo ({ data, total, ... })
+        if (precosRes.ok) {
+            const result = await precosRes.json();
+            if (Array.isArray(result)) {
+                // Servidor antigo: retorna array direto, sem paginação real
+                state.precos = result.map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
+                state.totalRecords = result.length;
+                state.totalPages = 1;
+                state.currentPage = 1;
+            } else {
+                // Servidor novo: retorna objeto paginado
+                state.precos = (result.data || []).map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
+                state.totalRecords = result.total || 0;
+                state.totalPages = result.totalPages || 1;
+                state.currentPage = result.page || 1;
+            }
+            isOnline = true;
+            updateConnectionStatus();
+            renderPrecos();
+            renderPaginacao();
+        }
+    } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+    }
+}
+
+// Busca marcas disponíveis extraindo da listagem completa
+async function atualizarMarcas() {
+    try {
+        const response = await fetchWithTimeout(`${API_URL}/precos?page=1&limit=9999`, {
             method: 'GET',
             headers: getHeaders()
         });
         if (response.ok) {
-            state.marcasDisponiveis = await response.json();
+            const data = await response.json();
+            const items = Array.isArray(data) ? data : (data.data || []);
+            const marcasSet = new Set();
+            items.forEach(p => { if (p.marca?.trim()) marcasSet.add(p.marca.trim()); });
+            state.marcasDisponiveis = [...marcasSet].sort();
             renderMarcasFilter();
         }
     } catch (err) {
-        console.error('Erro ao carregar marcas:', err);
+        console.error('Erro ao atualizar marcas:', err);
     }
-
-    // 2. Carrega primeira página (independente de ter conseguido as marcas)
-    await loadPrecos(1);
-
-    // 3. Agora sabemos que estamos online
-    isOnline = true;
-    updateConnectionStatus();
 }
 
 // ─── MARCAS ───────────────────────────────────────────────────────────────────
@@ -210,13 +250,19 @@ async function loadPrecos(page = 1, showLoader = true) {
 
         const result = await response.json();
 
-        state.precos = (result.data || []).map(item => ({
-            ...item,
-            descricao: item.descricao.toUpperCase()
-        }));
-        state.totalRecords = result.total || 0;
-        state.totalPages = result.totalPages || 1;
-        state.currentPage = result.page || page;
+        if (Array.isArray(result)) {
+            // Servidor antigo: array direto
+            state.precos = result.map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
+            state.totalRecords = result.length;
+            state.totalPages = 1;
+            state.currentPage = 1;
+        } else {
+            // Servidor novo: objeto paginado
+            state.precos = (result.data || []).map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
+            state.totalRecords = result.total || 0;
+            state.totalPages = result.totalPages || 1;
+            state.currentPage = result.page || page;
+        }
         isOnline = true;
         updateConnectionStatus();
 
@@ -426,9 +472,8 @@ async function handleSubmit(event) {
         closeFormModal();
         showToast(editId ? 'Item atualizado' : 'Item registrado', 'success');
 
-        // Atualiza marcas e recarrega página
-        const marcasRes = await fetchWithTimeout(`${API_URL}/marcas`, { method: 'GET', headers: getHeaders() });
-        if (marcasRes.ok) { state.marcasDisponiveis = await marcasRes.json(); renderMarcasFilter(); }
+        // Recarrega marcas extraindo da listagem completa
+        atualizarMarcas();
         loadPrecos(editId ? state.currentPage : 1);
 
     } catch (error) {
@@ -485,8 +530,7 @@ async function confirmDelete(id) {
             ? state.currentPage - 1
             : state.currentPage;
 
-        const marcasRes = await fetchWithTimeout(`${API_URL}/marcas`, { method: 'GET', headers: getHeaders() });
-        if (marcasRes.ok) { state.marcasDisponiveis = await marcasRes.json(); renderMarcasFilter(); }
+        atualizarMarcas();
         loadPrecos(pageToLoad);
 
     } catch (error) {
