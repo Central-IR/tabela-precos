@@ -156,19 +156,59 @@ app.get('/health', async (req, res) => {
 app.use('/api', verificarAutenticacao);
 
 app.head('/api/precos', (req, res) => {
+
+// Listar marcas disponíveis
+app.get("/api/marcas", async (req, res) => {
+    try {
+        const { data, error } = await supabase.from("precos").select("marca");
+        if (error) throw error;
+        const marcas = [...new Set((data || []).map(r => r.marca?.trim()).filter(Boolean))].sort();
+        res.json(marcas);
+    } catch (error) {
+        res.status(500).json({ error: "Erro ao buscar marcas" });
+    }
+});
     res.status(200).end();
 });
 
-// Listar preços
+// Listar preços (com paginação)
 app.get('/api/precos', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const page = parseInt(req.query.page) || 1;
+        const limit = Math.min(parseInt(req.query.limit) || 50, 50);
+        const marca = req.query.marca || null;
+        const search = req.query.search || null;
+
+        const from = (page - 1) * limit;
+        const to = from + limit - 1;
+
+        let query = supabase
             .from('precos')
-            .select('*')
-            .order('marca', { ascending: true });
+            .select('*', { count: 'exact' })
+            .order('marca', { ascending: true })
+            .order('codigo', { ascending: true });
+
+        if (marca && marca !== 'TODAS') {
+            query = query.eq('marca', marca);
+        }
+
+        if (search) {
+            query = query.or(`codigo.ilike.%${search}%,marca.ilike.%${search}%,descricao.ilike.%${search}%`);
+        }
+
+        query = query.range(from, to);
+
+        const { data, error, count } = await query;
 
         if (error) throw error;
-        res.json(data || []);
+
+        res.json({
+            data: data || [],
+            total: count || 0,
+            page,
+            limit,
+            totalPages: Math.ceil((count || 0) / limit)
+        });
     } catch (error) {
         res.status(500).json({ 
             error: 'Erro ao buscar preços'
