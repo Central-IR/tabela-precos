@@ -4,11 +4,21 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
     ? 'http://localhost:3002/api'
     : `${window.location.origin}/api`;
 
-let precos = [];
+const PAGE_SIZE = 50;
+
+// Estado global de paginação
+let state = {
+    precos: [],
+    currentPage: 1,
+    totalPages: 1,
+    totalRecords: 0,
+    marcaSelecionada: 'TODAS',
+    searchTerm: '',
+    marcasDisponiveis: [],
+    isLoading: false
+};
+
 let isOnline = false;
-let marcaSelecionada = 'TODAS';
-let marcasDisponiveis = new Set();
-let lastDataHash = '';
 let sessionToken = null;
 
 console.log('🚀 Tabela de Preços iniciada');
@@ -51,30 +61,39 @@ function mostrarTelaAcessoNegado(mensagem = 'NÃO AUTORIZADO') {
 function inicializarApp() {
     checkServerStatus();
     setInterval(checkServerStatus, 15000);
-    startPolling();
+    // Polling leve — apenas recarrega página atual se online
+    setInterval(() => {
+        if (isOnline && !state.isLoading) loadPrecos(state.currentPage, false);
+    }, 30000);
+}
+
+// ─── AUTENTICAÇÃO / STATUS ────────────────────────────────────────────────────
+
+function getHeaders() {
+    const headers = { 'Accept': 'application/json' };
+    if (sessionToken) headers['X-Session-Token'] = sessionToken;
+    return headers;
+}
+
+async function fetchWithTimeout(url, options = {}, timeout = 10000) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal, mode: 'cors' });
+        clearTimeout(timeoutId);
+        return response;
+    } catch (err) {
+        clearTimeout(timeoutId);
+        throw err;
+    }
 }
 
 async function checkServerStatus() {
     try {
-        const headers = {
-            'Accept': 'application/json'
-        };
-        
-        if (sessionToken) {
-            headers['X-Session-Token'] = sessionToken;
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(`${API_URL}/precos`, {
+        const response = await fetchWithTimeout(`${API_URL}/precos?page=1&limit=1`, {
             method: 'GET',
-            headers: headers,
-            mode: 'cors',
-            signal: controller.signal
+            headers: getHeaders()
         });
-
-        clearTimeout(timeoutId);
 
         if (response.status === 401) {
             sessionStorage.removeItem('tabelaPrecosSession');
@@ -84,16 +103,15 @@ async function checkServerStatus() {
 
         const wasOffline = !isOnline;
         isOnline = response.ok;
-        
+
         if (wasOffline && isOnline) {
             console.log('✅ SERVIDOR ONLINE');
-            await loadPrecos();
+            carregarMarcas();
         }
-        
+
         updateConnectionStatus();
         return isOnline;
     } catch (error) {
-        console.error('❌ Erro ao verificar servidor:', error.message);
         isOnline = false;
         updateConnectionStatus();
         return false;
@@ -107,36 +125,81 @@ function updateConnectionStatus() {
     }
 }
 
-function startPolling() {
-    loadPrecos();
-    setInterval(() => {
-        if (isOnline) loadPrecos();
-    }, 10000);
-}
+// ─── MARCAS ────────────────────────────────────────────────────────────────────
 
-async function loadPrecos() {
-    if (!isOnline) return;
-
+async function carregarMarcas() {
     try {
-        const headers = {
-            'Accept': 'application/json'
-        };
-        
-        if (sessionToken) {
-            headers['X-Session-Token'] = sessionToken;
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(`${API_URL}/precos`, {
+        const response = await fetchWithTimeout(`${API_URL}/marcas`, {
             method: 'GET',
-            headers: headers,
-            mode: 'cors',
-            signal: controller.signal
+            headers: getHeaders()
         });
 
-        clearTimeout(timeoutId);
+        if (!response.ok) return;
+
+        const marcas = await response.json();
+        state.marcasDisponiveis = marcas;
+        renderMarcasFilter();
+        loadPrecos(1);
+    } catch (error) {
+        console.error('Erro ao carregar marcas:', error);
+        loadPrecos(1);
+    }
+}
+
+function renderMarcasFilter() {
+    const container = document.getElementById('marcasFilter');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    ['TODAS', ...state.marcasDisponiveis].forEach(marca => {
+        const button = document.createElement('button');
+        button.className = `brand-button ${marca === state.marcaSelecionada ? 'active' : ''}`;
+        button.textContent = marca;
+        button.onclick = () => selecionarMarca(marca);
+        container.appendChild(button);
+    });
+}
+
+function selecionarMarca(marca) {
+    state.marcaSelecionada = marca;
+    state.currentPage = 1;
+    state.searchTerm = '';
+    const searchInput = document.getElementById('search');
+    if (searchInput) searchInput.value = '';
+    renderMarcasFilter();
+    loadPrecos(1);
+}
+
+// ─── CARREGAMENTO COM PAGINAÇÃO ────────────────────────────────────────────────
+
+async function loadPrecos(page = 1, showLoader = true) {
+    if (!isOnline) return;
+    if (state.isLoading) return;
+
+    state.isLoading = true;
+    state.currentPage = page;
+
+    if (showLoader) renderLoading();
+
+    try {
+        const params = new URLSearchParams({
+            page: page,
+            limit: PAGE_SIZE
+        });
+
+        if (state.marcaSelecionada && state.marcaSelecionada !== 'TODAS') {
+            params.set('marca', state.marcaSelecionada);
+        }
+
+        if (state.searchTerm) {
+            params.set('search', state.searchTerm);
+        }
+
+        const response = await fetchWithTimeout(`${API_URL}/precos?${params.toString()}`, {
+            method: 'GET',
+            headers: getHeaders()
+        });
 
         if (response.status === 401) {
             sessionStorage.removeItem('tabelaPrecosSession');
@@ -149,58 +212,136 @@ async function loadPrecos() {
             return;
         }
 
-        const data = await response.json();
-        precos = data.map(item => ({ ...item, descricao: item.descricao.toUpperCase() }));
-        
-        const newHash = JSON.stringify(precos.map(p => p.id));
-        if (newHash !== lastDataHash) {
-            lastDataHash = newHash;
-            atualizarMarcasDisponiveis();
-            renderMarcasFilter();
-            filterPrecos();
-        }
+        const result = await response.json();
+
+        // Descarta dados anteriores, usa apenas os da página atual
+        state.precos = (result.data || []).map(item => ({
+            ...item,
+            descricao: item.descricao.toUpperCase()
+        }));
+        state.totalRecords = result.total || 0;
+        state.totalPages = result.totalPages || 1;
+        state.currentPage = result.page || page;
+
+        renderPrecos();
+        renderPaginacao();
+
     } catch (error) {
         if (error.name === 'AbortError') {
             console.error('❌ Timeout ao carregar preços');
         } else {
             console.error('❌ Erro ao carregar:', error);
         }
+    } finally {
+        state.isLoading = false;
     }
 }
 
-function atualizarMarcasDisponiveis() {
-    marcasDisponiveis.clear();
-    precos.forEach(p => {
-        const marca = p.marca?.trim();
-        if (marca && !marcasDisponiveis.has(marca)) {
-            marcasDisponiveis.add(marca);
-        }
-    });
-    console.log(`📋 ${marcasDisponiveis.size} marcas disponíveis`);
+function filterPrecos() {
+    state.searchTerm = document.getElementById('search').value.trim();
+    state.currentPage = 1;
+    loadPrecos(1);
 }
 
-function renderMarcasFilter() {
-    const container = document.getElementById('marcasFilter');
+// ─── RENDERIZAÇÃO ──────────────────────────────────────────────────────────────
+
+function renderLoading() {
+    const container = document.getElementById('precosTableBody');
+    if (container) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
+                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
+                        <div class="loader" style="width:24px;height:24px;border-width:3px;"></div>
+                        Carregando...
+                    </div>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function renderPrecos() {
+    const container = document.getElementById('precosTableBody');
     if (!container) return;
 
-    const marcasArray = Array.from(marcasDisponiveis).sort();
-    
-    container.innerHTML = '';
-    
-    ['TODAS', ...marcasArray].forEach(marca => {
-        const button = document.createElement('button');
-        button.className = `brand-button ${marca === marcaSelecionada ? 'active' : ''}`;
-        button.textContent = marca;
-        button.onclick = () => selecionarMarca(marca);
-        container.appendChild(button);
-    });
+    if (!state.precos || state.precos.length === 0) {
+        container.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; padding: 2rem;">
+                    Nenhum preço encontrado
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    container.innerHTML = state.precos.map(p => `
+        <tr>
+            <td><strong>${p.marca}</strong></td>
+            <td>${p.codigo}</td>
+            <td>R$ ${parseFloat(p.preco).toFixed(2)}</td>
+            <td>${p.descricao}</td>
+            <td style="color: var(--text-secondary); font-size: 0.85rem;">${getTimeAgo(p.timestamp)}</td>
+            <td class="actions-cell" style="text-align: center;">
+                <button onclick="window.editPreco('${p.id}')" class="action-btn edit">Editar</button>
+                <button onclick="window.deletePreco('${p.id}')" class="action-btn delete">Excluir</button>
+            </td>
+        </tr>
+    `).join('');
 }
 
-function selecionarMarca(marca) {
-    marcaSelecionada = marca;
-    renderMarcasFilter();
-    filterPrecos();
+function renderPaginacao() {
+    // Remove paginação existente
+    const existingPagination = document.getElementById('paginacaoContainer');
+    if (existingPagination) existingPagination.remove();
+
+    const tableCard = document.querySelector('.table-card');
+    if (!tableCard) return;
+
+    const total = state.totalPages;
+    const atual = state.currentPage;
+
+    const inicio = state.totalRecords === 0 ? 0 : (atual - 1) * PAGE_SIZE + 1;
+    const fim = Math.min(atual * PAGE_SIZE, state.totalRecords);
+
+    // Gera botões de página (máx 7 visíveis)
+    let paginas = [];
+    if (total <= 7) {
+        for (let i = 1; i <= total; i++) paginas.push(i);
+    } else {
+        paginas.push(1);
+        if (atual > 3) paginas.push('...');
+        for (let i = Math.max(2, atual - 1); i <= Math.min(total - 1, atual + 1); i++) {
+            paginas.push(i);
+        }
+        if (atual < total - 2) paginas.push('...');
+        paginas.push(total);
+    }
+
+    const botoesHTML = paginas.map(p => {
+        if (p === '...') return `<span class="pag-ellipsis">…</span>`;
+        return `<button class="pag-btn ${p === atual ? 'pag-btn-active' : ''}" onclick="loadPrecos(${p})">${p}</button>`;
+    }).join('');
+
+    const div = document.createElement('div');
+    div.id = 'paginacaoContainer';
+    div.className = 'paginacao-wrapper';
+    div.innerHTML = `
+        <div class="paginacao-info">
+            ${state.totalRecords > 0 ? `Exibindo ${inicio}–${fim} de ${state.totalRecords} registros` : 'Nenhum registro'}
+        </div>
+        <div class="paginacao-btns">
+            <button class="pag-btn pag-nav" onclick="loadPrecos(${atual - 1})" ${atual === 1 ? 'disabled' : ''}>‹</button>
+            ${botoesHTML}
+            <button class="pag-btn pag-nav" onclick="loadPrecos(${atual + 1})" ${atual === total ? 'disabled' : ''}>›</button>
+        </div>
+    `;
+
+    tableCard.appendChild(div);
 }
+
+// ─── FORMULÁRIO ────────────────────────────────────────────────────────────────
 
 window.toggleForm = function() {
     showFormModal(null);
@@ -208,7 +349,7 @@ window.toggleForm = function() {
 
 function showFormModal(editingId = null) {
     const isEditing = editingId !== null;
-    const preco = isEditing ? precos.find(p => p.id === editingId) : null;
+    const preco = isEditing ? state.precos.find(p => p.id === editingId) : null;
 
     const modalHTML = `
         <div class="modal-overlay" id="formModal" style="display: flex;">
@@ -239,7 +380,7 @@ function showFormModal(editingId = null) {
                     </div>
                     <div class="modal-actions modal-actions-right">
                         <button type="submit" class="save">${isEditing ? 'Atualizar' : 'Salvar'}</button>
-                        <button type="button" onclick="closeFormModal(true)" class="secondary">Cancelar</button>
+                        <button type="button" onclick="closeFormModal(true)" class="danger">Cancelar</button>
                     </div>
                 </form>
             </div>
@@ -247,7 +388,7 @@ function showFormModal(editingId = null) {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
-    
+
     setTimeout(() => {
         const descricaoField = document.getElementById('modalDescricao');
         descricaoField.addEventListener('input', (e) => {
@@ -255,7 +396,7 @@ function showFormModal(editingId = null) {
             e.target.value = e.target.value.toUpperCase();
             e.target.setSelectionRange(start, start);
         });
-        
+
         document.getElementById('modalMarca')?.focus();
     }, 100);
 }
@@ -265,11 +406,11 @@ function closeFormModal(showCancelMessage = false) {
     if (modal) {
         const editId = document.getElementById('modalEditId')?.value;
         const isEditing = editId && editId !== '';
-        
+
         if (showCancelMessage) {
             showToast(isEditing ? 'Atualização cancelada' : 'Registro cancelado', 'error');
         }
-        
+
         modal.style.animation = 'fadeOut 0.2s ease forwards';
         setTimeout(() => modal.remove(), 200);
     }
@@ -286,16 +427,6 @@ async function handleSubmit(event) {
     };
 
     const editId = document.getElementById('modalEditId').value;
-    
-    // Verificar código duplicado
-    const codigoDuplicado = precos.find(p => 
-        p.codigo.toLowerCase() === formData.codigo.toLowerCase() && p.id !== editId
-    );
-
-    if (codigoDuplicado) {
-        showToast(`Código "${formData.codigo}" já existe`, 'error');
-        return;
-    }
 
     if (!isOnline) {
         showToast('Sistema offline', 'error');
@@ -311,23 +442,14 @@ async function handleSubmit(event) {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         };
-        
-        if (sessionToken) {
-            headers['X-Session-Token'] = sessionToken;
-        }
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000);
+        if (sessionToken) headers['X-Session-Token'] = sessionToken;
 
-        const response = await fetch(url, {
+        const response = await fetchWithTimeout(url, {
             method,
-            headers: headers,
-            body: JSON.stringify(formData),
-            mode: 'cors',
-            signal: controller.signal
-        });
-
-        clearTimeout(timeoutId);
+            headers,
+            body: JSON.stringify(formData)
+        }, 15000);
 
         if (response.status === 401) {
             sessionStorage.removeItem('tabelaPrecosSession');
@@ -346,22 +468,14 @@ async function handleSubmit(event) {
             throw new Error(errorMessage);
         }
 
-        const savedData = await response.json();
-        savedData.descricao = savedData.descricao.toUpperCase();
-
-        if (editId) {
-            const index = precos.findIndex(p => p.id === editId);
-            if (index !== -1) precos[index] = savedData;
-            showToast('Item atualizado', 'success');
-        } else {
-            precos.push(savedData);
-            showToast('Item registrado', 'success');
-        }
-
-        filterPrecos();
         closeFormModal();
+        showToast(editId ? 'Item atualizado' : 'Item registrado', 'success');
+
+        // Recarrega marcas e volta para p. 1 se novo, ou mantém página se edição
+        await carregarMarcas();
+        loadPrecos(editId ? state.currentPage : 1);
+
     } catch (error) {
-        console.error('Erro completo:', error);
         if (error.name === 'AbortError') {
             showToast('Timeout: Operação demorou muito', 'error');
         } else {
@@ -369,6 +483,8 @@ async function handleSubmit(event) {
         }
     }
 }
+
+// ─── EDITAR / EXCLUIR ──────────────────────────────────────────────────────────
 
 window.editPreco = function(id) {
     showFormModal(id);
@@ -388,7 +504,7 @@ function showDeleteModal(id) {
                 </div>
                 <div class="modal-actions modal-actions-no-border">
                     <button type="button" onclick="confirmDelete('${id}')" class="danger">Sim</button>
-                    <button type="button" onclick="closeDeleteModal()" class="secondary">Cancelar</button>
+                    <button type="button" onclick="closeDeleteModal()" class="danger">Cancelar</button>
                 </div>
             </div>
         </div>
@@ -414,25 +530,10 @@ async function confirmDelete(id) {
     }
 
     try {
-        const headers = {
-            'Accept': 'application/json'
-        };
-        
-        if (sessionToken) {
-            headers['X-Session-Token'] = sessionToken;
-        }
-
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
-        const response = await fetch(`${API_URL}/precos/${id}`, {
+        const response = await fetchWithTimeout(`${API_URL}/precos/${id}`, {
             method: 'DELETE',
-            headers: headers,
-            mode: 'cors',
-            signal: controller.signal
+            headers: getHeaders()
         });
-
-        clearTimeout(timeoutId);
 
         if (response.status === 401) {
             sessionStorage.removeItem('tabelaPrecosSession');
@@ -442,14 +543,17 @@ async function confirmDelete(id) {
 
         if (!response.ok) throw new Error('Erro ao deletar');
 
-        precos = precos.filter(p => p.id !== id);
-        lastDataHash = JSON.stringify(precos.map(p => p.id));
-        atualizarMarcasDisponiveis();
-        renderMarcasFilter();
-        filterPrecos();
         showToast('Preço excluído com sucesso!', 'success');
+
+        // Se era o último item da página, volta uma página
+        const pageToLoad = state.precos.length === 1 && state.currentPage > 1
+            ? state.currentPage - 1
+            : state.currentPage;
+
+        await carregarMarcas();
+        loadPrecos(pageToLoad);
+
     } catch (error) {
-        console.error('Erro ao deletar:', error);
         if (error.name === 'AbortError') {
             showToast('Timeout: Operação demorou muito', 'error');
         } else {
@@ -458,30 +562,7 @@ async function confirmDelete(id) {
     }
 }
 
-function filterPrecos() {
-    const searchTerm = document.getElementById('search').value.toLowerCase();
-    let filtered = precos;
-
-    if (marcaSelecionada !== 'TODAS') {
-        filtered = filtered.filter(p => p.marca === marcaSelecionada);
-    }
-
-    if (searchTerm) {
-        filtered = filtered.filter(p => 
-            p.codigo.toLowerCase().includes(searchTerm) ||
-            p.marca.toLowerCase().includes(searchTerm) ||
-            p.descricao.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    filtered.sort((a, b) => {
-        const marcaCompare = a.marca.localeCompare(b.marca);
-        if (marcaCompare !== 0) return marcaCompare;
-        return a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
-    });
-
-    renderPrecos(filtered);
-}
+// ─── UTILS ────────────────────────────────────────────────────────────────────
 
 function getTimeAgo(timestamp) {
     if (!timestamp) return 'Sem data';
@@ -498,45 +579,16 @@ function getTimeAgo(timestamp) {
     return past.toLocaleDateString('pt-BR');
 }
 
-function renderPrecos(precosToRender) {
-    const container = document.getElementById('precosTableBody');
-    
-    if (!precosToRender || precosToRender.length === 0) {
-        container.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 2rem;">
-                    Nenhum preço encontrado
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    container.innerHTML = precosToRender.map(p => `
-        <tr>
-            <td><strong>${p.marca}</strong></td>
-            <td>${p.codigo}</td>
-            <td>R$ ${parseFloat(p.preco).toFixed(2)}</td>
-            <td>${p.descricao}</td>
-            <td style="color: var(--text-secondary); font-size: 0.85rem;">${getTimeAgo(p.timestamp)}</td>
-            <td class="actions-cell" style="text-align: center;">
-                <button onclick="window.editPreco('${p.id}')" class="action-btn edit">Editar</button>
-                <button onclick="window.deletePreco('${p.id}')" class="action-btn delete">Excluir</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
 function showToast(message, type = 'success') {
     const oldMessages = document.querySelectorAll('.floating-message');
     oldMessages.forEach(msg => msg.remove());
-    
+
     const messageDiv = document.createElement('div');
     messageDiv.className = `floating-message ${type}`;
     messageDiv.textContent = message;
-    
+
     document.body.appendChild(messageDiv);
-    
+
     setTimeout(() => {
         messageDiv.style.animation = 'slideOut 0.3s ease forwards';
         setTimeout(() => messageDiv.remove(), 300);
