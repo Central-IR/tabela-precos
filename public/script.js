@@ -6,7 +6,6 @@ const API_URL = window.location.hostname === 'localhost' || window.location.host
 
 const PAGE_SIZE = 50;
 
-// Estado global de paginação
 let state = {
     precos: [],
     currentPage: 1,
@@ -27,6 +26,8 @@ console.log('📍 API URL:', API_URL);
 document.addEventListener('DOMContentLoaded', () => {
     verificarAutenticacao();
 });
+
+// ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────────
 
 function verificarAutenticacao() {
     const urlParams = new URLSearchParams(window.location.search);
@@ -58,19 +59,32 @@ function mostrarTelaAcessoNegado(mensagem = 'NÃO AUTORIZADO') {
     `;
 }
 
-async function inicializarApp() {
-    // Verifica status e já seta isOnline antes de qualquer coisa
-    await checkServerStatus();
-    // Carrega marcas e dados independentemente (checkServerStatus pode não transitar wasOffline→online em edge cases)
-    if (isOnline) carregarMarcas();
-    setInterval(checkServerStatus, 15000);
-    // Polling leve — apenas recarrega página atual se online
+// ─── INICIALIZAÇÃO ────────────────────────────────────────────────────────────
+
+function inicializarApp() {
+    // Carga inicial: marcas + primeira página
+    carregarTudo();
+
+    // Verifica conexão a cada 15s; se reconectar, recarrega tudo
+    setInterval(async () => {
+        const online = await verificarConexao();
+        if (online && !isOnline) {
+            isOnline = true;
+            updateConnectionStatus();
+            carregarTudo();
+        } else if (!online && isOnline) {
+            isOnline = false;
+            updateConnectionStatus();
+        }
+    }, 15000);
+
+    // Polling leve a cada 30s para atualizar a página atual
     setInterval(() => {
         if (isOnline && !state.isLoading) loadPrecos(state.currentPage, false);
     }, 30000);
 }
 
-// ─── AUTENTICAÇÃO / STATUS ────────────────────────────────────────────────────
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
 
 function getHeaders() {
     const headers = { 'Accept': 'application/json' };
@@ -91,64 +105,54 @@ async function fetchWithTimeout(url, options = {}, timeout = 10000) {
     }
 }
 
-async function checkServerStatus() {
+function updateConnectionStatus() {
+    const el = document.getElementById('connectionStatus');
+    if (el) el.className = isOnline ? 'connection-status online' : 'connection-status offline';
+}
+
+async function verificarConexao() {
     try {
         const response = await fetchWithTimeout(`${API_URL}/precos?page=1&limit=1`, {
             method: 'GET',
             headers: getHeaders()
         });
-
         if (response.status === 401) {
             sessionStorage.removeItem('tabelaPrecosSession');
             mostrarTelaAcessoNegado('Sua sessão expirou');
             return false;
         }
-
-        const wasOffline = !isOnline;
-        isOnline = response.ok;
-
-        // Só recarrega automaticamente ao reconectar (não na primeira chamada, que é gerenciada por inicializarApp)
-        if (wasOffline && isOnline && state.marcasDisponiveis.length > 0) {
-            console.log('✅ SERVIDOR RECONECTADO');
-            carregarMarcas();
-        }
-
-        updateConnectionStatus();
-        return isOnline;
-    } catch (error) {
-        isOnline = false;
-        updateConnectionStatus();
+        return response.ok;
+    } catch {
         return false;
     }
 }
 
-function updateConnectionStatus() {
-    const statusElement = document.getElementById('connectionStatus');
-    if (statusElement) {
-        statusElement.className = isOnline ? 'connection-status online' : 'connection-status offline';
-    }
-}
+// ─── CARGA INICIAL (marcas + dados) ──────────────────────────────────────────
 
-// ─── MARCAS ────────────────────────────────────────────────────────────────────
-
-async function carregarMarcas() {
+async function carregarTudo() {
+    // 1. Carrega marcas
     try {
         const response = await fetchWithTimeout(`${API_URL}/marcas`, {
             method: 'GET',
             headers: getHeaders()
         });
-
-        if (!response.ok) return;
-
-        const marcas = await response.json();
-        state.marcasDisponiveis = marcas;
-        renderMarcasFilter();
-        loadPrecos(1);
-    } catch (error) {
-        console.error('Erro ao carregar marcas:', error);
-        loadPrecos(1);
+        if (response.ok) {
+            state.marcasDisponiveis = await response.json();
+            renderMarcasFilter();
+        }
+    } catch (err) {
+        console.error('Erro ao carregar marcas:', err);
     }
+
+    // 2. Carrega primeira página (independente de ter conseguido as marcas)
+    await loadPrecos(1);
+
+    // 3. Agora sabemos que estamos online
+    isOnline = true;
+    updateConnectionStatus();
 }
+
+// ─── MARCAS ───────────────────────────────────────────────────────────────────
 
 function renderMarcasFilter() {
     const container = document.getElementById('marcasFilter');
@@ -167,7 +171,6 @@ function renderMarcasFilter() {
 
 function selecionarMarca(marca) {
     state.marcaSelecionada = marca;
-    state.currentPage = 1;
     state.searchTerm = '';
     const searchInput = document.getElementById('search');
     if (searchInput) searchInput.value = '';
@@ -175,32 +178,21 @@ function selecionarMarca(marca) {
     loadPrecos(1);
 }
 
-// ─── CARREGAMENTO COM PAGINAÇÃO ────────────────────────────────────────────────
+// ─── PAGINAÇÃO / DADOS ────────────────────────────────────────────────────────
 
 async function loadPrecos(page = 1, showLoader = true) {
-    if (!isOnline) return;
     if (state.isLoading) return;
-
     state.isLoading = true;
     state.currentPage = page;
 
     if (showLoader) renderLoading();
 
     try {
-        const params = new URLSearchParams({
-            page: page,
-            limit: PAGE_SIZE
-        });
+        const params = new URLSearchParams({ page, limit: PAGE_SIZE });
+        if (state.marcaSelecionada !== 'TODAS') params.set('marca', state.marcaSelecionada);
+        if (state.searchTerm) params.set('search', state.searchTerm);
 
-        if (state.marcaSelecionada && state.marcaSelecionada !== 'TODAS') {
-            params.set('marca', state.marcaSelecionada);
-        }
-
-        if (state.searchTerm) {
-            params.set('search', state.searchTerm);
-        }
-
-        const response = await fetchWithTimeout(`${API_URL}/precos?${params.toString()}`, {
+        const response = await fetchWithTimeout(`${API_URL}/precos?${params}`, {
             method: 'GET',
             headers: getHeaders()
         });
@@ -218,7 +210,6 @@ async function loadPrecos(page = 1, showLoader = true) {
 
         const result = await response.json();
 
-        // Descarta dados anteriores, usa apenas os da página atual
         state.precos = (result.data || []).map(item => ({
             ...item,
             descricao: item.descricao.toUpperCase()
@@ -226,16 +217,14 @@ async function loadPrecos(page = 1, showLoader = true) {
         state.totalRecords = result.total || 0;
         state.totalPages = result.totalPages || 1;
         state.currentPage = result.page || page;
+        isOnline = true;
+        updateConnectionStatus();
 
         renderPrecos();
         renderPaginacao();
 
     } catch (error) {
-        if (error.name === 'AbortError') {
-            console.error('❌ Timeout ao carregar preços');
-        } else {
-            console.error('❌ Erro ao carregar:', error);
-        }
+        console.error(error.name === 'AbortError' ? '❌ Timeout' : '❌ Erro:', error);
     } finally {
         state.isLoading = false;
     }
@@ -243,11 +232,10 @@ async function loadPrecos(page = 1, showLoader = true) {
 
 function filterPrecos() {
     state.searchTerm = document.getElementById('search').value.trim();
-    state.currentPage = 1;
     loadPrecos(1);
 }
 
-// ─── RENDERIZAÇÃO ──────────────────────────────────────────────────────────────
+// ─── RENDER ───────────────────────────────────────────────────────────────────
 
 function renderLoading() {
     const container = document.getElementById('precosTableBody');
@@ -269,12 +257,10 @@ function renderPrecos() {
     const container = document.getElementById('precosTableBody');
     if (!container) return;
 
-    if (!state.precos || state.precos.length === 0) {
+    if (!state.precos.length) {
         container.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 2rem;">
-                    Nenhum preço encontrado
-                </td>
+                <td colspan="6" style="text-align: center; padding: 2rem;">Nenhum preço encontrado</td>
             </tr>
         `;
         return;
@@ -296,37 +282,33 @@ function renderPrecos() {
 }
 
 function renderPaginacao() {
-    // Remove paginação existente
-    const existingPagination = document.getElementById('paginacaoContainer');
-    if (existingPagination) existingPagination.remove();
+    const existing = document.getElementById('paginacaoContainer');
+    if (existing) existing.remove();
 
     const tableCard = document.querySelector('.table-card');
     if (!tableCard) return;
 
     const total = state.totalPages;
     const atual = state.currentPage;
-
     const inicio = state.totalRecords === 0 ? 0 : (atual - 1) * PAGE_SIZE + 1;
     const fim = Math.min(atual * PAGE_SIZE, state.totalRecords);
 
-    // Gera botões de página (máx 7 visíveis)
     let paginas = [];
     if (total <= 7) {
         for (let i = 1; i <= total; i++) paginas.push(i);
     } else {
         paginas.push(1);
         if (atual > 3) paginas.push('...');
-        for (let i = Math.max(2, atual - 1); i <= Math.min(total - 1, atual + 1); i++) {
-            paginas.push(i);
-        }
+        for (let i = Math.max(2, atual - 1); i <= Math.min(total - 1, atual + 1); i++) paginas.push(i);
         if (atual < total - 2) paginas.push('...');
         paginas.push(total);
     }
 
-    const botoesHTML = paginas.map(p => {
-        if (p === '...') return `<span class="pag-ellipsis">…</span>`;
-        return `<button class="pag-btn ${p === atual ? 'pag-btn-active' : ''}" onclick="loadPrecos(${p})">${p}</button>`;
-    }).join('');
+    const botoesHTML = paginas.map(p =>
+        p === '...'
+            ? `<span class="pag-ellipsis">…</span>`
+            : `<button class="pag-btn ${p === atual ? 'pag-btn-active' : ''}" onclick="loadPrecos(${p})">${p}</button>`
+    ).join('');
 
     const div = document.createElement('div');
     div.id = 'paginacaoContainer';
@@ -341,21 +323,18 @@ function renderPaginacao() {
             <button class="pag-btn pag-nav" onclick="loadPrecos(${atual + 1})" ${atual === total ? 'disabled' : ''}>›</button>
         </div>
     `;
-
     tableCard.appendChild(div);
 }
 
-// ─── FORMULÁRIO ────────────────────────────────────────────────────────────────
+// ─── FORMULÁRIO ───────────────────────────────────────────────────────────────
 
-window.toggleForm = function() {
-    showFormModal(null);
-};
+window.toggleForm = function() { showFormModal(null); };
 
 function showFormModal(editingId = null) {
     const isEditing = editingId !== null;
     const preco = isEditing ? state.precos.find(p => p.id === editingId) : null;
 
-    const modalHTML = `
+    document.body.insertAdjacentHTML('beforeend', `
         <div class="modal-overlay" id="formModal" style="display: flex;">
             <div class="modal-content large">
                 <div class="modal-header">
@@ -389,40 +368,31 @@ function showFormModal(editingId = null) {
                 </form>
             </div>
         </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    `);
 
     setTimeout(() => {
-        const descricaoField = document.getElementById('modalDescricao');
-        descricaoField.addEventListener('input', (e) => {
+        document.getElementById('modalDescricao').addEventListener('input', (e) => {
             const start = e.target.selectionStart;
             e.target.value = e.target.value.toUpperCase();
             e.target.setSelectionRange(start, start);
         });
-
         document.getElementById('modalMarca')?.focus();
     }, 100);
 }
 
 function closeFormModal(showCancelMessage = false) {
     const modal = document.getElementById('formModal');
-    if (modal) {
-        const editId = document.getElementById('modalEditId')?.value;
-        const isEditing = editId && editId !== '';
-
-        if (showCancelMessage) {
-            showToast(isEditing ? 'Atualização cancelada' : 'Registro cancelado', 'error');
-        }
-
-        modal.style.animation = 'fadeOut 0.2s ease forwards';
-        setTimeout(() => modal.remove(), 200);
-    }
+    if (!modal) return;
+    const editId = document.getElementById('modalEditId')?.value;
+    if (showCancelMessage) showToast(editId ? 'Atualização cancelada' : 'Registro cancelado', 'error');
+    modal.style.animation = 'fadeOut 0.2s ease forwards';
+    setTimeout(() => modal.remove(), 200);
 }
 
 async function handleSubmit(event) {
     event.preventDefault();
 
+    const editId = document.getElementById('modalEditId').value;
     const formData = {
         marca: document.getElementById('modalMarca').value.trim(),
         codigo: document.getElementById('modalCodigo').value.trim(),
@@ -430,30 +400,17 @@ async function handleSubmit(event) {
         descricao: document.getElementById('modalDescricao').value.trim().toUpperCase()
     };
 
-    const editId = document.getElementById('modalEditId').value;
-
-    if (!isOnline) {
-        showToast('Sistema offline', 'error');
-        closeFormModal();
-        return;
-    }
+    if (!isOnline) { showToast('Sistema offline', 'error'); closeFormModal(); return; }
 
     try {
-        const url = editId ? `${API_URL}/precos/${editId}` : `${API_URL}/precos`;
-        const method = editId ? 'PUT' : 'POST';
-
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        };
-
+        const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
         if (sessionToken) headers['X-Session-Token'] = sessionToken;
 
-        const response = await fetchWithTimeout(url, {
-            method,
-            headers,
-            body: JSON.stringify(formData)
-        }, 15000);
+        const response = await fetchWithTimeout(
+            editId ? `${API_URL}/precos/${editId}` : `${API_URL}/precos`,
+            { method: editId ? 'PUT' : 'POST', headers, body: JSON.stringify(formData) },
+            15000
+        );
 
         if (response.status === 401) {
             sessionStorage.removeItem('tabelaPrecosSession');
@@ -462,76 +419,51 @@ async function handleSubmit(event) {
         }
 
         if (!response.ok) {
-            let errorMessage = 'Erro ao salvar';
-            try {
-                const errorData = await response.json();
-                errorMessage = errorData.error || errorData.message || errorMessage;
-            } catch (e) {
-                errorMessage = `Erro ${response.status}: ${response.statusText}`;
-            }
-            throw new Error(errorMessage);
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.error || `Erro ${response.status}`);
         }
 
         closeFormModal();
         showToast(editId ? 'Item atualizado' : 'Item registrado', 'success');
 
-        // Recarrega marcas e volta para p. 1 se novo, ou mantém página se edição
-        await carregarMarcas();
+        // Atualiza marcas e recarrega página
+        const marcasRes = await fetchWithTimeout(`${API_URL}/marcas`, { method: 'GET', headers: getHeaders() });
+        if (marcasRes.ok) { state.marcasDisponiveis = await marcasRes.json(); renderMarcasFilter(); }
         loadPrecos(editId ? state.currentPage : 1);
 
     } catch (error) {
-        if (error.name === 'AbortError') {
-            showToast('Timeout: Operação demorou muito', 'error');
-        } else {
-            showToast(`Erro: ${error.message}`, 'error');
-        }
+        showToast(error.name === 'AbortError' ? 'Timeout: Operação demorou muito' : `Erro: ${error.message}`, 'error');
     }
 }
 
-// ─── EDITAR / EXCLUIR ──────────────────────────────────────────────────────────
+// ─── EDITAR / EXCLUIR ─────────────────────────────────────────────────────────
 
-window.editPreco = function(id) {
-    showFormModal(id);
-};
-
-window.deletePreco = function(id) {
-    showDeleteModal(id);
-};
+window.editPreco = function(id) { showFormModal(id); };
+window.deletePreco = function(id) { showDeleteModal(id); };
 
 function showDeleteModal(id) {
-    const modalHTML = `
+    document.body.insertAdjacentHTML('beforeend', `
         <div class="modal-overlay" id="deleteModal" style="display: flex;">
             <div class="modal-content modal-delete">
                 <button class="close-modal" onclick="closeDeleteModal()">✕</button>
-                <div class="modal-message-delete">
-                    Tem certeza que deseja excluir este preço?
-                </div>
+                <div class="modal-message-delete">Tem certeza que deseja excluir este preço?</div>
                 <div class="modal-actions modal-actions-no-border">
                     <button type="button" onclick="confirmDelete('${id}')" class="danger">Sim</button>
                     <button type="button" onclick="closeDeleteModal()" class="danger">Cancelar</button>
                 </div>
             </div>
         </div>
-    `;
-
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    `);
 }
 
 function closeDeleteModal() {
     const modal = document.getElementById('deleteModal');
-    if (modal) {
-        modal.style.animation = 'fadeOut 0.2s ease forwards';
-        setTimeout(() => modal.remove(), 200);
-    }
+    if (modal) { modal.style.animation = 'fadeOut 0.2s ease forwards'; setTimeout(() => modal.remove(), 200); }
 }
 
 async function confirmDelete(id) {
     closeDeleteModal();
-
-    if (!isOnline) {
-        showToast('Sistema offline. Não foi possível excluir.', 'error');
-        return;
-    }
+    if (!isOnline) { showToast('Sistema offline. Não foi possível excluir.', 'error'); return; }
 
     try {
         const response = await fetchWithTimeout(`${API_URL}/precos/${id}`, {
@@ -549,20 +481,16 @@ async function confirmDelete(id) {
 
         showToast('Preço excluído com sucesso!', 'success');
 
-        // Se era o último item da página, volta uma página
         const pageToLoad = state.precos.length === 1 && state.currentPage > 1
             ? state.currentPage - 1
             : state.currentPage;
 
-        await carregarMarcas();
+        const marcasRes = await fetchWithTimeout(`${API_URL}/marcas`, { method: 'GET', headers: getHeaders() });
+        if (marcasRes.ok) { state.marcasDisponiveis = await marcasRes.json(); renderMarcasFilter(); }
         loadPrecos(pageToLoad);
 
     } catch (error) {
-        if (error.name === 'AbortError') {
-            showToast('Timeout: Operação demorou muito', 'error');
-        } else {
-            showToast('Erro ao excluir preço', 'error');
-        }
+        showToast(error.name === 'AbortError' ? 'Timeout: Operação demorou muito' : 'Erro ao excluir preço', 'error');
     }
 }
 
@@ -572,29 +500,22 @@ function getTimeAgo(timestamp) {
     if (!timestamp) return 'Sem data';
     const now = new Date();
     const past = new Date(timestamp);
-    const diffInSeconds = Math.floor((now - past) / 1000);
-    if (diffInSeconds < 60) return `${diffInSeconds}s`;
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    if (diffInMinutes < 60) return `${diffInMinutes}min`;
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    if (diffInHours < 24) return `${diffInHours}h`;
-    const diffInDays = Math.floor(diffInHours / 24);
-    if (diffInDays < 7) return `${diffInDays}d`;
+    const diff = Math.floor((now - past) / 1000);
+    if (diff < 60) return `${diff}s`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}min`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d`;
     return past.toLocaleDateString('pt-BR');
 }
 
 function showToast(message, type = 'success') {
-    const oldMessages = document.querySelectorAll('.floating-message');
-    oldMessages.forEach(msg => msg.remove());
-
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `floating-message ${type}`;
-    messageDiv.textContent = message;
-
-    document.body.appendChild(messageDiv);
-
+    document.querySelectorAll('.floating-message').forEach(m => m.remove());
+    const div = document.createElement('div');
+    div.className = `floating-message ${type}`;
+    div.textContent = message;
+    document.body.appendChild(div);
     setTimeout(() => {
-        messageDiv.style.animation = 'slideOut 0.3s ease forwards';
-        setTimeout(() => messageDiv.remove(), 300);
+        div.style.animation = 'slideOut 0.3s ease forwards';
+        setTimeout(() => div.remove(), 300);
     }, 3000);
 }
