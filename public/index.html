@@ -8,11 +8,6 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Splash Screen -->
-    <div class="splash-screen" id="splashScreen">
-        <div class="loader"></div>
-    </div>
-
     <!-- App Content -->
     <div class="app-content">
         <div class="container">
@@ -69,17 +64,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Script para remover splash screen -->
-    <script>
-        setTimeout(() => {
-            const splash = document.getElementById('splashScreen');
-            if (splash) {
-                splash.style.display = 'none';
-            }
-        }, 3000);
-    </script>
-    
     <script src="script.js"></script>
 </body>
 </html>
