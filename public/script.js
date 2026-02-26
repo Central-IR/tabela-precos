@@ -80,7 +80,7 @@ function inicializarApp() {
 
     // Polling leve a cada 30s para atualizar a página atual
     setInterval(() => {
-        if (isOnline && !state.isLoading) loadPrecos(state.currentPage, false);
+        if (isOnline && !state.isLoading) loadPrecos(state.currentPage);
     }, 30000);
 }
 
@@ -236,12 +236,10 @@ function selecionarMarca(marca) {
 
 // ─── PAGINAÇÃO / DADOS ────────────────────────────────────────────────────────
 
-async function loadPrecos(page = 1, showLoader = true) {
+async function loadPrecos(page = 1) {
     if (state.isLoading) return;
     state.isLoading = true;
     state.currentPage = page;
-
-    if (showLoader) renderLoading();
 
     try {
         const params = new URLSearchParams({ page, limit: PAGE_SIZE });
@@ -292,28 +290,17 @@ async function loadPrecos(page = 1, showLoader = true) {
     }
 }
 
+let searchDebounceTimer = null;
+
 function filterPrecos() {
     state.searchTerm = document.getElementById('search').value.trim();
-    loadPrecos(1);
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+        loadPrecos(1);
+    }, 200);
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
-
-function renderLoading() {
-    const container = document.getElementById('precosTableBody');
-    if (container) {
-        container.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 2rem; color: var(--text-secondary);">
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 0.75rem;">
-                        <div class="loader" style="width:24px;height:24px;border-width:3px;"></div>
-                        Carregando...
-                    </div>
-                </td>
-            </tr>
-        `;
-    }
-}
 
 function renderPrecos() {
     const container = document.getElementById('precosTableBody');
