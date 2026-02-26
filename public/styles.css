@@ -1,6 +1,6 @@
 /* VARIÁVEIS BASE - IDÊNTICAS A TRANSPORTADORAS */
 :root {
-    --primary: #CC7000;
+    --primary: #ff521d;
     --bg-primary: #FFFFFF;
     --bg-secondary: #F8F9FA;
     --bg-card: #FFFFFF;
@@ -33,7 +33,7 @@
         --bg-card: #1A1A1A;
         --text-primary: #FFFFFF;
         --text-secondary: #A0A0A0;
-        --border-color: rgba(204, 112, 0, 0.08);
+        --border-color: rgba(255, 82, 29, 0.08);
         --input-bg: #2A2A2A;
         --table-stripe: #1F1F1F;
         --card-shadow: none;
@@ -59,29 +59,8 @@ body {
     overflow-y: scroll;
 }
 
-/* LOADER */
-.loader {
-    width: 48px;
-    height: 48px;
-    border: 4px solid rgba(204, 112, 0, 0.2);
-    border-top-color: #CC7000;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
 .app-content {
-    opacity: 0;
-    animation: contentFadeIn 0.5s ease 2.5s forwards;
-}
-
-@keyframes contentFadeIn {
-    to { opacity: 1; }
+    opacity: 1;
 }
 
 .container {
@@ -230,7 +209,7 @@ h3 {
 
 .brand-button:hover {
     border-color: var(--primary);
-    background: rgba(204, 112, 0, 0.05);
+    background: rgba(255, 82, 29, 0.05);
 }
 
 .brand-button.active {
@@ -786,7 +765,7 @@ button.small {
 .pag-btn:hover:not(:disabled) {
     border-color: var(--primary);
     color: var(--primary);
-    background: rgba(204, 112, 0, 0.05);
+    background: rgba(255, 82, 29, 0.05);
     transform: none;
     opacity: 1;
 }
